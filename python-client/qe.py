@@ -1,6 +1,9 @@
+#
+# Joel's lab for learning more about queryable encryption in MongoDB.
+#
+
 from pymongo import MongoClient
 import os
-
 
 
 PASSWORD=os.getenv("JOEL_ATLAS_PWD")
@@ -14,12 +17,26 @@ COLLECTION = "JoelCollection"
 client = MongoClient(CONNNECTION_STRING)
 
 # Specify the database and collection
-db = client[DATABASE]
-collection = db[COLLECTION]
+DB = client[DATABASE]
+COLLECTION = DB[COLLECTION]
 
-# Document to insert
-user_record = {"name": "John Doe", "email": "john.doe@example.com"}
 
-# Inserting the document
-result = collection.insert_one(user_record)
-print(f"One record inserted: {result.inserted_id}")
+def insert_a_doc():
+    """
+    Insert a document into the database.
+    """
+    doc = {"name": "John Doe", "email": "john.doe@example.com"}
+    result = COLLECTION.insert_one(doc)
+    print(f"One record inserted: {result.inserted_id}")
+
+def dump_all_docs():
+    """
+    Dumps the entire collection, document by document.
+    """
+
+    for doc in COLLECTION.find():
+        print(doc)
+
+
+#insert_a_doc()
+dump_all_docs()
