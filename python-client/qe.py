@@ -4,6 +4,7 @@ import os
 from pymongo.encryption import ClientEncryption
 from bson.codec_options import CodecOptions
 from bson.binary import STANDARD
+import random
 
 # See https://www.mongodb.com/docs/v7.0/core/queryable-encryption/quick-start/#std-label-qe-quick-start
 # That was my starting point for this client.
@@ -67,14 +68,53 @@ client_encryption = ClientEncryption(
 
 customer_master_key_credentials = {} # no creds because using a local key CMK
 
-client_encryption.create_encrypted_collection(
-    encrypted_client[encrypted_database_name],
-    encrypted_collection_name,
-    encrypted_fields_map,
-    kms_provider_name,
-    customer_master_key_credentials,
-)
+# client_encryption.create_encrypted_collection(
+#     encrypted_client[encrypted_database_name],
+#     encrypted_collection_name,
+#     encrypted_fields_map,
+#     kms_provider_name,
+#     customer_master_key_credentials,
+# )
 
 # At this point in working through the quick start to build this code, I could
 # see the new encrypted collection in Atlas. w00t!
+#
+# But....  I can't run it twice without getting an exception, so commenting it out for now.
+#
+
+SECRET_SSN = f"{random.randint(0, 999999999):09d}"
+
+patient_document = {
+    "patientName": "Jon Doe",
+    "patientId": 12345678,
+    "patientRecord": {
+        "ssn": SECRET_SSN,
+        "billing": {
+            "type": "Visa",
+            "number": "4111111111111111",
+        },
+    },
+}
+
+encrypted_collection = encrypted_client[encrypted_database_name][encrypted_collection_name]
+result = encrypted_collection.insert_one(patient_document)
+print(f"One record inserted: {result.inserted_id}")
+print()
+
+# At this point in working through the quick start, I can see reconds appear
+# in Atlas. w00t!
+
+find_result = encrypted_collection.find_one({
+    "patientRecord.ssn": SECRET_SSN
+})
+
+print(find_result)
+print()
+
+# At this point in working through the quick start, I was able to retrieve the
+# result. w00t!
+#
+# If I run the program multiple times, I see new objects being created in Atlas.
+# I do not see a proliferation of keys in the vault collection, unlike my FLE
+# experiment. I'll have to think about the expected / desired behavior.
 
