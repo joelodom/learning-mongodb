@@ -15,10 +15,11 @@ HELP_STRING = """Available commands:
 
     show
         universes         Shows all universes.
+        rooms             Shows all rooms.
     
     create
         universe <name>   Creates a universe.
-        room <name
+        room <name>       Creates a room. The name may include spaces.
 
     destroy
         universe <name>   Destroys a universe.
@@ -57,6 +58,7 @@ def destroy(split_command):
     return "I wish to destroy, but I know this thing not."
 
 def teleport(s):
+    global DB
     if len(s) < 2:
         return "Where shall I teleport?"
     db_name = s[1]
@@ -68,12 +70,13 @@ def teleport(s):
     return f"You are now in universe {DB.name}."
 
 def create_universe(db_name):
+    global DB
     if is_reserved_universe(db_name):
         return "Naughty, naughty, naughty."
     if db_name in MONGO_CLIENT.list_database_names():
         return "Can one create that which already exists?"
     DB = MONGO_CLIENT[db_name]
-    # It appears I have to add data to really create the database
+    # It appears I have to add data to permanently create the database
     DB.properties.insert_one({"blank": ""})
     return f"Created a new universe, {db_name}. You are now there."
 
@@ -81,28 +84,50 @@ def list_universes():
     db_list = MONGO_CLIENT.list_database_names()
     return list(set(db_list) - set(RESERVED_DB_NAMES))
 
+def list_rooms():
+    rooms = []
+    if DB is not None:
+        query = {}
+        projection = {
+            "_id": 0,
+            "name": 1
+        }
+        results = DB.rooms.find(query, projection)
+        for doc in results:
+            rooms.append(doc["name"])
+    return rooms
+
 def show(split_command):
     s = split_command
     if len(s) < 2:
         return "Show what?"
     if s[1] == "universes":
-        return f"All known universes: {' '.join(list_universes())}"
+        return f"All known universes: {', '.join(list_universes())}"
+    elif s[1] == "rooms":
+        return f"All known rooms: {', '.join(list_rooms())}"
     return "I don't know how to show that."
 
+def create_room(room_name):
+    global DB
+    if DB is None:
+        return "You must be in a universe to create a room."
+    DB.rooms.insert_one({"name":room_name})
+    return f"Created a room called {room_name}."
+
 def create(split_command):
-    "Creates something."
-
     s = split_command
-
     if len(s) < 2:
         return "Create what?"
-
     if s[1] == "universe":
         if len(s) < 3:
             return "Remember to name your universe."
         universe_name = s[2]
         return create_universe(universe_name)
-    
+    elif s[1] == "room":
+        if len(s) < 3:
+            return "Remember to name your room. It may contain spaces."
+        room_name = ' '.join(s[2:])
+        return create_room(room_name)
     return "I don't know how to create that."
 
 def read():
@@ -141,20 +166,27 @@ def evaluate(command):
 #
     
 TEST_UNIVERSE_NAME = "test-universe-3141"
+TEST_ROOM_NAME = "test room"
 
 def cleanup_before_tests():
     if TEST_UNIVERSE_NAME in list_universes():
         evaluate(f"destroy universe {TEST_UNIVERSE_NAME}")
 
-def test_create_list_destroy_universe():
+def test_monolothic_flow():
     assert(TEST_UNIVERSE_NAME not in list_universes())
+
     evaluate(f"create universe {TEST_UNIVERSE_NAME}")
     assert TEST_UNIVERSE_NAME in evaluate("show universes")
+
+    evaluate(f"create room {TEST_ROOM_NAME}")
+    assert TEST_ROOM_NAME in evaluate("show rooms")
+
     evaluate(f"destroy universe {TEST_UNIVERSE_NAME}")
+    assert(TEST_UNIVERSE_NAME not in list_universes())
 
 def run_all_tests():
     cleanup_before_tests()
-    test_create_list_destroy_universe()
+    test_monolothic_flow()
 
 run_all_tests()
 
