@@ -11,12 +11,14 @@ HELP_STRING = """Available commands:
 
     help    This screen.
     exit    Exit the game.
+    status  Show the status of the game.
 
     show
         universes         Shows all universes.
     
     create
         universe <name>   Creates a universe.
+        room <name
 
     destroy
         universe <name>   Destroys a universe.
@@ -106,6 +108,12 @@ def create(split_command):
 def read():
     return input("> ")
 
+def status():
+    universe = "You are not in any universe.";
+    if DB is not None:
+        universe = f"You are in universe {DB.name}."
+    return f"""{universe}"""
+
 def evaluate(command):
     s = command.split(" ")
 
@@ -123,6 +131,8 @@ def evaluate(command):
         return teleport(s)
     elif s[0] == "destroy":
         return destroy(s)
+    elif s[0] == "status":
+        return status()
     
     return "I don't know what to do with that."
 
