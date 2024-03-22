@@ -27,8 +27,14 @@ HELP_STRING = """Available commands:
 MONGO_CLIENT = MongoClient('mongodb://localhost:27017/')
 DB = None # This is the universe
 
+RESERVED_DB_NAMES = ["admin", "local", "config"]
+def is_reserved_universe(name):
+    return name in RESERVED_DB_NAMES
+
 def destroy_universe(db_name):
     global DB
+    if is_reserved_universe(db_name):
+        return "Naughty, naughty, naughty."
     if db_name not in MONGO_CLIENT.list_database_names():
         return "Can one destroy that which does not exist?"
     if DB is not None:
@@ -46,36 +52,39 @@ def destroy(split_command):
             return "But what universe to destroy?"
         universe_name = s[2]
         return destroy_universe(universe_name)
-    return "I wish to destroy, but I know this not."
+    return "I wish to destroy, but I know this thing not."
 
 def teleport(s):
     if len(s) < 2:
         return "Where shall I teleport?"
     db_name = s[1]
+    if is_reserved_universe(db_name):
+        return "Naughty, naughty, naughty."
     if db_name not in MONGO_CLIENT.list_database_names():
         return "Such a place does not exist. Yet."
     DB = MONGO_CLIENT[db_name]
     return f"You are now in universe {DB.name}."
 
 def create_universe(db_name):
+    if is_reserved_universe(db_name):
+        return "Naughty, naughty, naughty."
     if db_name in MONGO_CLIENT.list_database_names():
         return "Can one create that which already exists?"
     DB = MONGO_CLIENT[db_name]
     # It appears I have to add data to really create the database
     DB.properties.insert_one({"blank": ""})
+    return f"Created a new universe, {db_name}. You are now there."
+
+def list_universes():
+    db_list = MONGO_CLIENT.list_database_names()
+    return list(set(db_list) - set(RESERVED_DB_NAMES))
 
 def show(split_command):
-    "Shows some kind of information."
-
     s = split_command
-
     if len(s) < 2:
         return "Show what?"
-    
     if s[1] == "universes":
-        db_list = MONGO_CLIENT.list_database_names()
-        return f"All known universes: {' '.join(db_list)}"
-    
+        return f"All known universes: {' '.join(list_universes())}"
     return "I don't know how to show that."
 
 def create(split_command):
@@ -90,8 +99,7 @@ def create(split_command):
         if len(s) < 3:
             return "Remember to name your universe."
         universe_name = s[2]
-        create_universe(universe_name)
-        return f"Created a new universe, {universe_name}. You are now there."
+        return create_universe(universe_name)
     
     return "I don't know how to create that."
 
@@ -118,13 +126,34 @@ def evaluate(command):
     
     return "I don't know what to do with that."
 
+#
+# TESTS
+#
+    
+TEST_UNIVERSE_NAME = "test-universe-3141"
+
+def cleanup_before_tests():
+    if TEST_UNIVERSE_NAME in list_universes():
+        evaluate(f"destroy universe {TEST_UNIVERSE_NAME}")
+
+def test_create_list_destroy_universe():
+    assert(TEST_UNIVERSE_NAME not in list_universes())
+    evaluate(f"create universe {TEST_UNIVERSE_NAME}")
+    assert TEST_UNIVERSE_NAME in evaluate("show universes")
+    evaluate(f"destroy universe {TEST_UNIVERSE_NAME}")
+
+def run_all_tests():
+    cleanup_before_tests()
+    test_create_list_destroy_universe()
+
+run_all_tests()
+
+#
+# REPL
+#
+
 while True:
     command = read()
     response = evaluate(command)
     print(response)
     print()
-
-#
-# TESTS
-#
-    
