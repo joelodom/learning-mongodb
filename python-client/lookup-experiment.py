@@ -68,7 +68,7 @@ def create_a_room(items_to_put_in_room):
     ROOM = {
         "name": ROOM_NAME,
         "description": ROOM_DESCRIPTION,
-        "items": items_to_put_in_room
+        "contents": items_to_put_in_room
     }
     DB.rooms.insert_one(ROOM)
     return ROOM_NAME
@@ -87,7 +87,7 @@ print(f"Created a room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROO
 # a count greater than one.
 #
 
-PIPELINE = [
+COUNT_PIPELINE = [
     {
         "$group": {
             "_id": "$name",
@@ -101,8 +101,36 @@ PIPELINE = [
     }
 ]
 
-duplicates = DB.items.aggregate(PIPELINE)
+duplicates = DB.items.aggregate(COUNT_PIPELINE)
 for item in duplicates:
-    print(f"Duplicate item: {item["_id"]}")
+    print(f"*** Duplicate item: {item["_id"]}")
     assert(False) # resolve duplicate item
 
+#
+# Use an aggregation pipeline to lookup each item in a room as an object, by its name.
+#
+
+LOOKUP_PIPELINE = [
+    {
+        "$lookup": {
+            "from": "items",
+            "localField": "contents",
+            "foreignField": "name",
+            "as": "room_contents"  # this will be an array of item objects
+        }
+    },
+    {
+        "$project": {
+            "contents": 0  # don't need the contents twice
+        }
+    }
+]
+
+rooms_with_contents = DB.rooms.aggregate(LOOKUP_PIPELINE)
+
+for room in rooms_with_contents:
+    print(f"{room["name"]} Contains:")
+    for item in room["room_contents"]:
+        print(f"  a {item["name"]} ({item["description"]})")
+
+print()
