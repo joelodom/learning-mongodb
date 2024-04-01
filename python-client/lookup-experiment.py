@@ -7,6 +7,10 @@ import os
 
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
+from pymongo.encryption import ClientEncryption
+
+from bson.codec_options import CodecOptions
+from bson.binary import STANDARD
 
 #
 # Set up everything we will need for implicit encryption
@@ -32,7 +36,7 @@ auto_encryption_options = AutoEncryptionOpts(  # use automatic encryption
     crypt_shared_lib_path=CRYPT_SHARED_LIB
 )
 
-auto_encryption_options = None  # Remove this to demonstrate the $lookup failure
+#auto_encryption_options = None  # Remove this to demonstrate the $lookup failure
 
 #
 # Connect to the Mongo database
@@ -42,9 +46,10 @@ PASSWORD=os.getenv("JOEL_ATLAS_PWD")
 if PASSWORD is None:
     raise Exception("Password not set in environment.")
 URI = f"mongodb+srv://joelodom:{PASSWORD}@joelqecluster.udwxc.mongodb.net/?retryWrites=true&w=majority&appName=JoelQECluster"
-MONGO_CLIENT = MongoClient(URI, auto_encryption_opts=auto_encryption_options)
 DB_NAME = "lookup-experiment"
-DB = MONGO_CLIENT[DB_NAME] # This alone is not enough to create a database
+
+mongo_client = MongoClient(URI, auto_encryption_opts=auto_encryption_options)
+db = mongo_client[DB_NAME] # This alone is not enough to create a database
 
 #
 # Here are some utilities for creating nonsense data
@@ -75,7 +80,7 @@ def generate_nonsense_words(count):
 #
 
 def create_some_items(count):
-    global DB
+    global db
     created_items = []
     for x in range(count):
         ITEM_NAME = generate_nonsense_words(1)
@@ -85,12 +90,12 @@ def create_some_items(count):
         }
         # Insert the item into the items collection
         # (creates db and collection, if they don't exist)
-        DB.items.insert_one(ITEM_TO_CREATE) # TODO: Use insert_many instead!
+        db.items.insert_one(ITEM_TO_CREATE) # TODO: Use insert_many instead!
         created_items.append(ITEM_NAME)
     return created_items
 
-def create_a_room(items_to_put_in_room):
-    global DB
+def create_a_room(items_to_put_in_room, is_secret = False):
+    global db
     ROOM_NAME = f"Room {generate_nonsense_word()}"
     ROOM_DESCRIPTION = generate_nonsense_words(30)
     ROOM = {
@@ -98,7 +103,10 @@ def create_a_room(items_to_put_in_room):
         "description": ROOM_DESCRIPTION,
         "contents": items_to_put_in_room
     }
-    DB.rooms.insert_one(ROOM)
+    if is_secret:
+        db.secret_rooms.insert_one(ROOM)
+    else:
+        db.rooms.insert_one(ROOM)
     return ROOM_NAME
 
 NUMBER_OF_ITEMS_TO_PUT_IN_ROOM = 10
@@ -129,7 +137,7 @@ COUNT_PIPELINE = [
     }
 ]
 
-duplicates = DB.items.aggregate(COUNT_PIPELINE)
+duplicates = db.items.aggregate(COUNT_PIPELINE)
 for item in duplicates:
     print(f"*** Duplicate item: {item["_id"]}")
     assert(False) # resolve duplicate item
@@ -138,29 +146,30 @@ for item in duplicates:
 # Use an aggregation pipeline to lookup each item in a room as an object, by its name.
 #
 
-LOOKUP_PIPELINE = [
-    {
-        "$lookup": {
-            "from": "items",
-            "localField": "contents",
-            "foreignField": "name",
-            "as": "room_contents"  # this will be an array of item objects
+if auto_encryption_options is None:  # because $lookup doesn't work with encryption
+    LOOKUP_PIPELINE = [
+        {
+            "$lookup": {
+                "from": "items",
+                "localField": "contents",
+                "foreignField": "name",
+                "as": "room_contents"  # this will be an array of item objects
+            }
+        },
+        {
+            "$project": {
+                "contents": 0  # don't need the contents twice
+            }
         }
-    },
-    {
-        "$project": {
-            "contents": 0  # don't need the contents twice
-        }
-    }
-]
+    ]
 
-rooms_with_contents = DB.rooms.aggregate(LOOKUP_PIPELINE)
+    rooms_with_contents = db.rooms.aggregate(LOOKUP_PIPELINE)
 
-for room in rooms_with_contents:
-    #print(f"{room["name"]} Contains:")
-    for item in room["room_contents"]:
-        pass
-        #print(f"  a {item["name"]} ({item["description"]})")
+    for room in rooms_with_contents:
+        #print(f"{room["name"]} Contains:")
+        for item in room["room_contents"]:
+            pass
+            #print(f"  a {item["name"]} ({item["description"]})")
 
 #
 # Stick a random item in a random room.
@@ -172,16 +181,16 @@ SAMPLE_PIPELINE = [
     }
 ]
 
-random_item = DB.items.aggregate(SAMPLE_PIPELINE).next()
+random_item = db.items.aggregate(SAMPLE_PIPELINE).next()
 #print(f"{random_item["name"]}")  # yes, it's different every time
 
-random_room = DB.rooms.aggregate([
+random_room = db.rooms.aggregate([
     {
         "$sample": { "size": 1 }
     }
 ]).next()
 
-DB.rooms.update_one(
+db.rooms.update_one(
     {
         "_id": random_room["_id"]
     },
@@ -196,7 +205,7 @@ print(f"Added a {random_item["name"]} to {random_room["name"]}.")
 # Now perform an array query to find rooms with the random item type in it.
 #
 
-rooms = DB.rooms.find(
+rooms = db.rooms.find(
     {
         "contents": random_item["name"]
     }
@@ -205,4 +214,44 @@ rooms = DB.rooms.find(
 for room in rooms:
     print (f"{room["name"]} contains a {random_item["name"]}.")
 
+#
+# Now let's experiment with secret rooms!
+#
+
+ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
+    "fields": [
+        {
+            "path": "name",
+            "bsonType": "string",
+            "queries": [ {"queryType": "equality"} ]  # queryable
+        }
+    ]
+}
+
+ENCRYPTED_ROOMS_COLLECTION = "secret_rooms"
+
+if ENCRYPTED_ROOMS_COLLECTION not in db.list_collection_names():
+    # create the (partially) encrypted collection on the first run
+    client_encryption = ClientEncryption(  # a kind of helper
+        kms_providers=KMS_PROVIDER_CREDENTIALS,
+        key_vault_namespace=KEY_VAULT_NAMESPACE,
+        key_vault_client=mongo_client,
+        codec_options=CodecOptions(uuid_representation=STANDARD)
+    )
+    CMK_CREDENTIALS = {}  # no creds because using a local key CMK
+    client_encryption.create_encrypted_collection(
+        mongo_client[DB_NAME],
+        ENCRYPTED_ROOMS_COLLECTION,
+        ENCRYPTED_FIELDS_MAP,
+        KMS_PROVIDER_NAME,
+        CMK_CREDENTIALS,
+    )
+
+NUMBER_OF_ITEMS_TO_PUT_IN_ROOM = 10
+created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
+created_room = create_a_room(created_items, is_secret=True)
+
+print(f"Created a secret room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it.")
+
 print()
+
