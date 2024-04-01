@@ -129,8 +129,52 @@ LOOKUP_PIPELINE = [
 rooms_with_contents = DB.rooms.aggregate(LOOKUP_PIPELINE)
 
 for room in rooms_with_contents:
-    print(f"{room["name"]} Contains:")
+    #print(f"{room["name"]} Contains:")
     for item in room["room_contents"]:
-        print(f"  a {item["name"]} ({item["description"]})")
+        pass
+        #print(f"  a {item["name"]} ({item["description"]})")
+
+#
+# Stick a random item in a random room.
+#
+
+SAMPLE_PIPELINE = [
+    {
+        "$sample": { "size": 1 }  # sample is pseudo random
+    }
+]
+
+random_item = DB.items.aggregate(SAMPLE_PIPELINE).next()
+#print(f"{random_item["name"]}")  # yes, it's different every time
+
+random_room = DB.rooms.aggregate([
+    {
+        "$sample": { "size": 1 }
+    }
+]).next()
+
+DB.rooms.update_one(
+    {
+        "_id": random_room["_id"]
+    },
+    {
+        "$push": { "contents": random_item["name"]}
+    }
+)
+
+print(f"Added a {random_item["name"]} to {random_room["name"]}.")
+
+#
+# Now perform an array query to find rooms with the random item type in it.
+#
+
+rooms = DB.rooms.find(
+    {
+        "contents": random_item["name"]
+    }
+)
+
+for room in rooms:
+    print (f"{room["name"]} contains a {random_item["name"]}.")
 
 print()
