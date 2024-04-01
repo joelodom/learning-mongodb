@@ -239,7 +239,18 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
         #     "path": "contents",
         #     "bsonType": "array",
         #     #"queries": [ {"queryType": "equality"} ]  # queryable
-        # }
+        # },
+        {
+            "path": "fear_factor",
+            "bsonType": "int",
+            "queries":
+            [ {
+                "queryType": "rangePreview",
+                "sparsity": 2,
+                "min": 0,
+                "max": 99
+            } ]  # range queryable
+        }
     ]
 }
 
@@ -320,15 +331,29 @@ print(f"Added a {random_item["name"]} to secret room {random_room["name"]}.")
 # Query for a room using Queryable Encryption
 #
 
-found_room = db.secret_rooms.find(
+found_room = db.secret_rooms.find_one(
     {"name": random_room["name"]}
-).next()
+)
 
 assert(found_room["name"] == random_room["name"])
 
 print(f"Contents of {found_room["name"]}:")
 for item in found_room["contents"]:
     print(f"  {item}")
+
+#
+# Now perform a range query
+#
+
+scary_rooms = db.secret_rooms.find(
+    {
+        "fear_factor": { "$gt": 95 }
+    }
+)
+
+print(f"Here are the scariest rooms:")
+for room in scary_rooms:
+    print(f"{room["name"]} has a fear factor of {room["fear_factor"]}")
 
 print()
 
