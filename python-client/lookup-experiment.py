@@ -81,39 +81,43 @@ def generate_nonsense_words(count):
 
 def create_some_items(count):
     global db
-    created_items = []
+    created_items_names = []
+    created_items_dicts = []
     for x in range(count):
-        ITEM_NAME = generate_nonsense_words(1)
-        ITEM_TO_CREATE = {
-            "name": ITEM_NAME,
+        item_name = generate_nonsense_words(1)
+        created_items_names.append(item_name)
+        item_to_create = {
+            "name": item_name,
             "description": generate_nonsense_words(20)
         }
-        # Insert the item into the items collection
-        # (creates db and collection, if they don't exist)
-        db.items.insert_one(ITEM_TO_CREATE) # TODO: Use insert_many instead!
-        created_items.append(ITEM_NAME)
-    return created_items
+        created_items_dicts.append(item_to_create)
+    # Insert the item into the items collection
+    # (creates db and collection, if they don't exist)
+    db.items.insert_many(created_items_dicts)
+    return created_items_names
 
 def create_a_room(items_to_put_in_room, is_secret = False):
     global db
-    ROOM_NAME = f"Room {generate_nonsense_word()}"
-    ROOM_DESCRIPTION = generate_nonsense_words(30)
-    ROOM = {
-        "name": ROOM_NAME,
-        "description": ROOM_DESCRIPTION,
+    room_name = f"Room {generate_nonsense_word()}"
+    room_description = generate_nonsense_words(30)
+    room = {
+        "name": room_name,
+        "description": room_description,
         "contents": items_to_put_in_room
     }
     if is_secret:
-        db.secret_rooms.insert_one(ROOM)
+        db.secret_rooms.insert_one(room)
     else:
-        db.rooms.insert_one(ROOM)
-    return ROOM_NAME
+        db.rooms.insert_one(room)
+    return room_name
 
+NUMBER_OF_ROOMS_TO_CREATE = 10
 NUMBER_OF_ITEMS_TO_PUT_IN_ROOM = 10
-created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
-created_room = create_a_room(created_items)
 
-print(f"Created a room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it.")
+for x in range(NUMBER_OF_ROOMS_TO_CREATE):
+    created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
+    created_room = create_a_room(created_items)
+    print(f"Created a room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it. ({x + 1}/{NUMBER_OF_ROOMS_TO_CREATE})")
 
 #
 # Check for duplicate item names using an aggregation pipeline. It would be smarter
@@ -261,11 +265,10 @@ if ENCRYPTED_ROOMS_COLLECTION not in db.list_collection_names():
 # Create a secret room with some stuff in it
 #
 
-NUMBER_OF_ITEMS_TO_PUT_IN_ROOM = 10
-created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
-created_room = create_a_room(created_items, is_secret=True)
-
-print(f"Created a secret room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it.")
+for x in range(NUMBER_OF_ROOMS_TO_CREATE):
+    created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
+    created_room = create_a_room(created_items, is_secret=True)
+    print(f"Created a secret room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it. ({x + 1}/{NUMBER_OF_ROOMS_TO_CREATE})")
 
 #
 # Stick a random item in a random secret room
