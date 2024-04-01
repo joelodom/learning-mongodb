@@ -224,6 +224,10 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "path": "name",
             "bsonType": "string",
             "queries": [ {"queryType": "equality"} ]  # queryable
+        },
+        {
+            "path": "contents",
+            "bsonType": "array"
         }
     ]
 }
