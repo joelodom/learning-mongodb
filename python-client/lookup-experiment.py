@@ -103,7 +103,8 @@ def create_a_room(items_to_put_in_room, is_secret = False):
     room = {
         "name": room_name,
         "description": room_description,
-        "contents": items_to_put_in_room
+        "contents": items_to_put_in_room,
+        "fear_factor": random.randint(0, 99)
     }
     if is_secret:
         db.secret_rooms.insert_one(room)
@@ -114,10 +115,10 @@ def create_a_room(items_to_put_in_room, is_secret = False):
 NUMBER_OF_ROOMS_TO_CREATE = 10
 NUMBER_OF_ITEMS_TO_PUT_IN_ROOM = 10
 
-for x in range(NUMBER_OF_ROOMS_TO_CREATE):
-    created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
-    created_room = create_a_room(created_items)
-    print(f"Created a room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it. ({x + 1}/{NUMBER_OF_ROOMS_TO_CREATE})")
+# for x in range(NUMBER_OF_ROOMS_TO_CREATE):
+#     created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
+#     created_room = create_a_room(created_items)
+#     print(f"Created a room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it. ({x + 1}/{NUMBER_OF_ROOMS_TO_CREATE})")
 
 #
 # Check for duplicate item names using an aggregation pipeline. It would be smarter
@@ -127,24 +128,24 @@ for x in range(NUMBER_OF_ROOMS_TO_CREATE):
 # a count greater than one.
 #
 
-COUNT_PIPELINE = [
-    {
-        "$group": {
-            "_id": "$name",
-            "count": { "$sum": 1 }
-        }
-    },
-    {
-        "$match": {
-            "count": { "$gt": 1 }
-        }
-    }
-]
+# COUNT_PIPELINE = [
+#     {
+#         "$group": {
+#             "_id": "$name",
+#             "count": { "$sum": 1 }
+#         }
+#     },
+#     {
+#         "$match": {
+#             "count": { "$gt": 1 }
+#         }
+#     }
+# ]
 
-duplicates = db.items.aggregate(COUNT_PIPELINE)
-for item in duplicates:
-    print(f"*** Duplicate item: {item["_id"]}")
-    assert(False) # resolve duplicate item
+# duplicates = db.items.aggregate(COUNT_PIPELINE)
+# for item in duplicates:
+#     print(f"*** Duplicate item: {item["_id"]}")
+#     assert(False) # resolve duplicate item
 
 #
 # Use an aggregation pipeline to lookup each item in a room as an object, by its name.
