@@ -230,11 +230,11 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "bsonType": "string",
             "queries": [ {"queryType": "equality"} ]  # queryable
         },
-        {
-            "path": "contents",
-            "bsonType": "array",
-            #"queries": [ {"queryType": "equality"} ]  # queryable
-        }
+        # {
+        #     "path": "contents",
+        #     "bsonType": "array",
+        #     #"queries": [ {"queryType": "equality"} ]  # queryable
+        # }
     ]
 }
 
@@ -286,7 +286,7 @@ random_room = db.secret_rooms.aggregate([
     }
 ]).next()
 
-db.rooms.update_one(
+db.secret_rooms.update_one(
     {
         "_id": random_room["_id"]
     },
@@ -300,7 +300,7 @@ print(f"Added a {random_item["name"]} to secret room {random_room["name"]}.")
 #
 # Now perform an array query to find rooms with the random item type in it.
 #
-# TODO: UNDER CONSTRUCTION / UNTESTED
+# TODO: UNDER CONSTRUCTION / UNTESTED -- Won't work until array is fixed?
 #
 
 # rooms = db.rooms.find(
@@ -311,6 +311,20 @@ print(f"Added a {random_item["name"]} to secret room {random_room["name"]}.")
 
 # for room in rooms:
 #     print (f"{room["name"]} contains a {random_item["name"]}.")
+
+#
+# Query for a room using Queryable Encryption
+#
+
+found_room = db.secret_rooms.find(
+    {"name": random_room["name"]}
+).next()
+
+assert(found_room["name"] == random_room["name"])
+
+print(f"Contents of {found_room["name"]}:")
+for item in found_room["contents"]:
+    print(f"  {item}")
 
 print()
 
