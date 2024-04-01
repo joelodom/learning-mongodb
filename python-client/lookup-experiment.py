@@ -215,7 +215,12 @@ for room in rooms:
     print (f"{room["name"]} contains a {random_item["name"]}.")
 
 #
-# Now let's experiment with secret rooms!
+# If necessary, create the encrypted collection for secret rooms.
+#
+# HERE IS WHERE WE CAN DEMONSTRATE THE ARRAY LIMITATION. If you blow away
+# the secret_rooms collection, the code below will try to recreate it. If
+# you make the contents array queryable in ENCRYPTED_FIELDS_MAP, you'll get the
+# exception.
 #
 
 ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
@@ -227,7 +232,8 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
         },
         {
             "path": "contents",
-            "bsonType": "array"
+            "bsonType": "array",
+            #"queries": [ {"queryType": "equality"} ]  # queryable
         }
     ]
 }
@@ -251,11 +257,60 @@ if ENCRYPTED_ROOMS_COLLECTION not in db.list_collection_names():
         CMK_CREDENTIALS,
     )
 
+#
+# Create a secret room with some stuff in it
+#
+
 NUMBER_OF_ITEMS_TO_PUT_IN_ROOM = 10
 created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
 created_room = create_a_room(created_items, is_secret=True)
 
 print(f"Created a secret room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it.")
+
+#
+# Stick a random item in a random secret room
+#
+
+SAMPLE_PIPELINE = [
+    {
+        "$sample": { "size": 1 }  # sample is pseudo random
+    }
+]
+
+random_item = db.items.aggregate(SAMPLE_PIPELINE).next()
+#print(f"{random_item["name"]}")  # yes, it's different every time
+
+random_room = db.secret_rooms.aggregate([
+    {
+        "$sample": { "size": 1 }
+    }
+]).next()
+
+db.rooms.update_one(
+    {
+        "_id": random_room["_id"]
+    },
+    {
+        "$push": { "contents": random_item["name"]}
+    }
+)
+
+print(f"Added a {random_item["name"]} to secret room {random_room["name"]}.")
+
+#
+# Now perform an array query to find rooms with the random item type in it.
+#
+# TODO: UNDER CONSTRUCTION / UNTESTED
+#
+
+# rooms = db.rooms.find(
+#     {
+#         "contents": random_item["name"]
+#     }
+# )
+
+# for room in rooms:
+#     print (f"{room["name"]} contains a {random_item["name"]}.")
 
 print()
 
