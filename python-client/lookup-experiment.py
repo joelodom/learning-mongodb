@@ -70,7 +70,7 @@ def generate_nonsense_word():
     return word
 
 def generate_nonsense_words(count):
-    return ' '.join([generate_nonsense_word() for x in range(count)])
+    return ' '.join([generate_nonsense_word() for i in range(count)])
 
 #
 # Create some items and drop them in rooms
@@ -83,7 +83,7 @@ def create_some_items(count):
     global db
     created_items_names = []
     created_items_dicts = []
-    for x in range(count):
+    for i in range(count):
         item_name = generate_nonsense_words(1)
         created_items_names.append(item_name)
         item_to_create = {
@@ -111,6 +111,21 @@ def create_a_room(items_to_put_in_room, is_secret = False):
     else:
         db.rooms.insert_one(room)
     return room_name
+
+def create_many_empty_secret_rooms(how_many):
+    global db
+    rooms = []
+    for i in range(how_many):
+        room_name = f"Room {generate_nonsense_word()}"
+        room_description = generate_nonsense_words(10)
+        room = {
+            "name": room_name,
+            "description": room_description,
+            "contents": [],
+            "fear_factor": random.randint(0, 99)
+        }
+        rooms.append(room)
+    db.secret_rooms.insert_many(rooms)
 
 NUMBER_OF_ROOMS_TO_CREATE = 10
 NUMBER_OF_ITEMS_TO_PUT_IN_ROOM = 10
@@ -277,10 +292,10 @@ if ENCRYPTED_ROOMS_COLLECTION not in db.list_collection_names():
 # Create a secret room with some stuff in it
 #
 
-for x in range(NUMBER_OF_ROOMS_TO_CREATE):
+for i in range(NUMBER_OF_ROOMS_TO_CREATE):
     created_items = create_some_items(NUMBER_OF_ITEMS_TO_PUT_IN_ROOM)
     created_room = create_a_room(created_items, is_secret=True)
-    print(f"Created a secret room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it. ({x + 1}/{NUMBER_OF_ROOMS_TO_CREATE})")
+    print(f"Created a secret room called {created_room} with {NUMBER_OF_ITEMS_TO_PUT_IN_ROOM} items in it. ({i + 1}/{NUMBER_OF_ROOMS_TO_CREATE})")
 
 #
 # Stick a random item in a random secret room
@@ -355,5 +370,17 @@ print(f"Here are the scariest rooms:")
 for room in scary_rooms:
     print(f"{room["name"]} has a fear factor of {room["fear_factor"]}")
 
-print()
+#
+# Create lots of rooms for perf testing
+#
+    
+ITERATIONS = 10
+ROOMS_PER_ITERATION = 1000
 
+for i in range(ITERATIONS):
+    create_many_empty_secret_rooms(ROOMS_PER_ITERATION)
+    print(f"Finished iteration {i + 1} of {ITERATIONS}")
+
+print(f"Finished creating {ITERATIONS*ROOMS_PER_ITERATION} rooms.")
+
+print()
