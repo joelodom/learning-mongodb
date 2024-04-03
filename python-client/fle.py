@@ -51,7 +51,7 @@ client_encryption = ClientEncryption(
 )
 
 # Creating the data key at this point is enough to cause encryption.__keyVault
-# to appear in my cluster. I think I need to avoid re-creatig this every
+# to appear in my cluster. I think I need to avoid re-creating this every
 # run of the program (see the quick start guide for more about this).
 data_key_id = client_encryption.create_data_key("local")
 
