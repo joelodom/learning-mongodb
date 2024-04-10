@@ -1,8 +1,15 @@
 """
 This is a toy program by Joel Odom to demonstrate MongoDB CSFLE encryption and arrays.
 
-As of 7.0 we don't have support for CSFLE and arrays.
+As of 7.0 we don't have support for CSFLE and arrays, so the SHOW_THE_PROBLEM flag
+toggles into a world where the analogs for non-arrays work so we can think about
+how arrays should work.
 """
+
+
+SHOW_THE_PROBLEM = True  # TURN THIS ON TO DEMONSTRATE THE PROBLEM
+
+
 
 import os
 from bson import STANDARD, CodecOptions
@@ -58,16 +65,32 @@ schema_map = {
     f"{DATABASE}.{COLLECTION}": {
         "bsonType": "object",
         "properties": {
-            "encryptedArray": {
+            "encryptedString": {
                 "encrypt": {
                     "keyId": [ data_key_id ],
-                    "bsonType": "array",
+                    "bsonType": "string",
                     "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
                 }
             }
         }
     }
 }
+
+if SHOW_THE_PROBLEM:
+    schema_map = {
+        f"{DATABASE}.{COLLECTION}": {
+            "bsonType": "object",
+            "properties": {
+                "encryptedArray": {
+                    "encrypt": {
+                        "keyId": [ data_key_id ],
+                        "bsonType": "array",
+                        "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+                    }
+                }
+            }
+        }
+    }
 
 #
 # Create a record in the database that includes an encrypted array. This uses
@@ -87,7 +110,8 @@ client = MongoClient(
 doc = {
     "name": "John Doe",
     "email": "john.doe@example.com",
-    "encryptedArray": [ "Super", "secret", "stuff" ]
+    "encryptedArray": [ "Super", "secret", "stuff" ],
+    "encryptedString": "secret"
     }
 
 client[DATABASE][COLLECTION].insert_one(doc)
@@ -96,3 +120,33 @@ client[DATABASE][COLLECTION].insert_one(doc)
 # In 7.0 the line above fails with, "Cannot encrypt element of type: array" because
 # we don't support it yet.
 #
+
+#
+# Show a string search and an array semi-analog. Need to decide how to handle this.
+# Note that the find on encryptedString only returns one result, which is expected
+# because this toy program changes the key every time, which I probably should fix.
+#
+
+results = client[DATABASE][COLLECTION].find(
+    {
+        "encryptedString": "secret"
+    }
+)
+
+#
+# Or let's find every document that has "stuff" in encryptedArray.
+#
+
+if SHOW_THE_PROBLEM:
+    results = client[DATABASE][COLLECTION].find(
+        {
+            "encryptedArray": {
+                "$in": [ "stuff" ]
+            }
+        }
+    )
+
+for result in results:
+    print(result)
+
+print()
