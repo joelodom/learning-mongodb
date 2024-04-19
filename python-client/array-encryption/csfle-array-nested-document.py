@@ -1,6 +1,6 @@
 """
 This is a toy program by Joel Odom to demonstrate MongoDB CSFLE
-and matching elements in an array using $in.
+and matching elements in an array that contains nested documents.
 """
 
 import csflearrays
@@ -41,7 +41,7 @@ client = csflearrays.create_mongo_client(schema_map)
 doc = {
     "name": "John Doe",
     "email": "john.doe@example.com",
-    "encryptedArray": [ "Super", "secret", "stuff" ]
+    "encryptedArray": [ { "foo":"Super" }, { "foo":"secret" }, { "foo":"stuff" } ]
     }
 
 client[DATABASE][COLLECTION].insert_one(doc)
@@ -53,9 +53,7 @@ client[DATABASE][COLLECTION].insert_one(doc)
 
 results = client[DATABASE][COLLECTION].find(
     {
-        "encryptedArray": {
-            "$in": [ "stuff" ]
-        }
+        "encryptedArray.foo": "stuff"
     }
 )
 
