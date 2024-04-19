@@ -15,18 +15,20 @@ import csflearrays
 DATABASE = "array_encryption_database"
 COLLECTION = "array_encryption_collection"
 
+data_key_id = csflearrays.create_data_key()
+
 schema_map = {
     f"{DATABASE}.{COLLECTION}": {
         "bsonType": "object",
-        # "properties": {
-        #     "encryptedArray": {
-        #         "encrypt": {
-        #             "keyId": [ data_key_id ],
-        #             "bsonType": "array",
-        #             "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
-        #         }
-        #     }
-        # }
+        "properties": {
+            "encryptedArray": {
+                "encrypt": {
+                    "keyId": [ data_key_id ],
+                    "bsonType": "array",
+                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic"
+                }
+            }
+        }
     }
 }
 
@@ -34,7 +36,7 @@ schema_map = {
 # Create a record in the database that includes an encrypted array.
 #
 
-client = csflearrays.get_a_client(schema_map)
+client = csflearrays.create_mongo_client(schema_map)
 
 doc = {
     "name": "John Doe",
