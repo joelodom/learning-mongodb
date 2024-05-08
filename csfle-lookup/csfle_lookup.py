@@ -6,9 +6,12 @@ Author: Joel Odom
 """
 
 import argparse
+from bson import STANDARD, CodecOptions
 from pymongo import MongoClient
-from pymongo.errors import CollectionInvalid
 import os
+from pymongo.encryption import ClientEncryption
+from pymongo.encryption_options import AutoEncryptionOpts
+
 
 #
 # These are global constants that you may have to tweak to use this program
@@ -25,9 +28,9 @@ STARSHIPS_COLLECTION = "starships"
 MISSIONS_COLLECTION = "missions"
 
 STARSHIPS_DATA = [
-    {"starship_id": 1, "name": "USS Enterprise", "prefix_id": 31415},
-    {"starship_id": 2, "name": "USS Voyager", "prefix_id": 27182},
-    {"starship_id": 3, "name": "USS Reliant", "prefix_id": 16309}
+    {"starship_id": 1, "name": "USS Enterprise", "prefix_code": 31415},
+    {"starship_id": 2, "name": "USS Voyager", "prefix_code": 27182},
+    {"starship_id": 3, "name": "USS Reliant", "prefix_code": 16309}
 ]
 
 MISSIONS_DATA = [
@@ -36,6 +39,20 @@ MISSIONS_DATA = [
     {"mission_id": 103, "title": "Diplomatic Mission to Cardassia", "starship_id": 2},
     {"mission_id": 104, "title": "Exact Revenge on Admiral Kirk", "starship_id": 3}
 ]
+
+KEY_VAULT_DB = DB_NAME  # Reuse the same database
+KEY_VAULT_COLL = "__keyVault"
+KEY_VAULT_NAMESPACE = f"{KEY_VAULT_DB}.{KEY_VAULT_COLL}"
+
+# 96 random hardcoded key bytes, because it's only an example
+LOCAL_MASTER_KEY = b";1\x0f\x06%\x97\x99\xa5\xaen\xb4\x8b<T3v\x0b\\\xeb\x9f\x13\xa8\xb9\xc0[\xa0\xc3\xb9\xa7\x0e|\x8e3o5\x1a\xd8\x08H\x0b \xf1\xc1Eb\xeb\x0b\x8e\xde\xe4Oz\xe3\x0bs%$R\x13?\x9aI\x1d\xd0'\xee\xd8\x06\x85\x16\x90\xb0\x9ec#\x9c=Y\x8f\xc5\xc211\xc5\x15\x07\xae\xd2\xc6\xdb\xc5\x9c^S\xae,"
+
+# The ClientEncryption helper object needs a key provider
+KMS_PROVIDERS = {
+    "local": {
+        "key": LOCAL_MASTER_KEY
+    },
+}
 
 
 def create_parser():
@@ -57,45 +74,99 @@ def create_parser():
                         action="store_true",
                         help="demonstrate some lookup scenarios")
 
+    parser.add_argument("--encryption",
+                        action="store_true",
+                        help="use automatic encryption")
+
     return parser
 
 
-def connect_to_mongo():
+def connect_to_mongo(with_encyption):
     """
     Connect to the MongoDB cluster.
     
     Returns a MongoClient.
     """
 
-    client = MongoClient(MONGO_URI)
+    auto_encryption_opts = None
+
+    if with_encyption:
+        # Get the data key id (there should be only one)
+        schemaless_client = MongoClient(MONGO_URI)
+        db = schemaless_client[KEY_VAULT_DB]
+        key_vault_collection = db[KEY_VAULT_COLL]
+        key_document = key_vault_collection.find_one()
+        if key_document is None:
+            raise Exception(
+                "Key not found. Did you create the database with encryption?")
+        key_id = key_document['_id']  # returned as a binary string
+
+        # Create the schema map that specifies what to automatically encrypt
+        SCHEMA_MAP = {
+            f"{DB_NAME}.{STARSHIPS_COLLECTION}": {
+                "bsonType": "object",
+                "properties": {
+                    "prefix_code": {
+                        "encrypt": {
+                            "bsonType": "int",
+                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+                            "keyId": [key_id]
+                        }
+                    }
+                }
+            }
+        }
+
+        # Build the automatic encryption options object from the schema map
+        auto_encryption_opts=AutoEncryptionOpts(
+            KMS_PROVIDERS,
+            KEY_VAULT_NAMESPACE,
+            schema_map=SCHEMA_MAP
+        )
+
+    client = MongoClient(MONGO_URI, auto_encryption_opts=auto_encryption_opts)
     return client
 
 
-def setup_database():
+def setup_database(with_encryption):
     """
     Set up the database for first use.
     """
 
-    client = connect_to_mongo()
+    # Create a temporary schemaless client for use here
+    schemaless_client = MongoClient(MONGO_URI)
 
     # Check if the database already exists
-    if DB_NAME in client.list_database_names():
+    if DB_NAME in schemaless_client.list_database_names():
         raise Exception(f"Database {DB_NAME} already exists.")
+    
+    if with_encryption:
+        # A ClientEncryption is attached to the database to perform CSFLE
+        client_encryption = ClientEncryption(
+            KMS_PROVIDERS,
+            KEY_VAULT_NAMESPACE,
+            schemaless_client,
+            CodecOptions(uuid_representation=STANDARD)
+        )
 
-    # Create the database
+        # Create a data key (which is stored in encrypted form in the database)
+        # Use a single data key for everything in this example
+        data_key_id = client_encryption.create_data_key("local")
+
+    # Create the database, collections and documents
+    client = connect_to_mongo(with_encryption)
     db = client[DB_NAME]
-
     collections_data = [
         (STARSHIPS_COLLECTION, STARSHIPS_DATA),
         (MISSIONS_COLLECTION, MISSIONS_DATA)
         ]
-
-    # Check and create collections
     for collection_name, data in collections_data:
         if collection_name in db.list_collection_names():
             raise Exception(
                 f"Collection {collection_name} already exists in {DB_NAME} database.")
         db[collection_name].insert_many(data)
+
+    print("Database setup complete with sample data.")
 
 
 def destroy_database():
@@ -105,20 +176,23 @@ def destroy_database():
     The user will need the dbAdmin role on the database to destroy it.
     """
 
-    client = connect_to_mongo()
+    # Encryption doesn't matter for destruction
+    client = connect_to_mongo(with_encyption=False)
 
     if DB_NAME not in client.list_database_names():
         raise Exception(f"Database '{DB_NAME}' does not exist.")
 
     client.drop_database(DB_NAME)
 
+    print("Database destruction complete.")
 
-def perform_lookup():
+
+def perform_lookup(with_encryption):
     """
     Performs a simple lookup for demonstration purposes.
     """
  
-    client = connect_to_mongo()
+    client = connect_to_mongo(with_encryption)
     db = client[DB_NAME]
 
     pipeline = [
@@ -150,18 +224,16 @@ def perform_lookup():
 def main():
     parser = create_parser()
     args = parser.parse_args()
-    
+
     if args.setup_database:
         print("Setting up database before first use...")
-        setup_database()
-        print("Database setup complete with sample data.")
+        setup_database(args.encryption)
     elif args.destroy_database:
         print("Destroying the database...")
         destroy_database()
-        print("Database destruction complete.")
     elif args.demonstrate_lookup:
         print("Showing demonstration lookups...")
-        perform_lookup()
+        perform_lookup(args.encryption)
     else:
         parser.print_help()
     
