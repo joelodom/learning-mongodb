@@ -15,6 +15,13 @@ Here are some steps to demonstrate how CSFLE works (and how lookup should work):
   7. If you try to list the codes without specifying encryption you see gibberish
   8. You can't do a lookup, even though the field isn't even used for the lookup
   9. If you turn off encryption, you can do the lookup because the field isn't used for the lookup
+
+I also added the ability to lookup starships associated with a mission, which
+is the reverse direction (the collection with encryption is the foreign one) in
+the lookup. Observe a similar behavior: you can omit the --encryption flag and
+it works (because the prefix code is not used), but when you add the encryption
+flag it won't work because a collection with automatic encryption tied to it
+can't be used in a lookup.
 """
 
 import argparse
@@ -87,6 +94,10 @@ def create_parser():
     group.add_argument("--demonstrate-lookup",
                         action="store_true",
                         help="demonstrate some lookup scenarios")
+    
+    group.add_argument("--list-missions",
+                       action="store_true",
+                       help="list all missions")
     
     group.add_argument("--list-prefix-codes",
                        action="store_true",
@@ -205,7 +216,7 @@ def destroy_database():
     print("Database destruction complete.")
 
 
-def perform_lookup(with_encryption):
+def perform_mission_lookup(with_encryption):
     """
     Performs a simple lookup for demonstration purposes.
     """
@@ -238,6 +249,42 @@ def perform_lookup(with_encryption):
         print("No results found. Did you create the database?")
         return
 
+def perform_starship_lookup(with_encryption):
+    """
+    This is the reverse of the mission lookup.
+
+    The encrypted prefix code is in the foreign collection, not the local
+    collection.
+    """
+    client = connect_to_mongo(with_encryption)
+    db = client[DB_NAME]
+
+    pipeline = [
+        {
+            "$lookup": {
+                "from": STARSHIPS_COLLECTION,
+                "localField": "starship_id",
+                "foreignField": "starship_id",
+                "as": "starships"
+            }
+        }
+    ]
+
+    results = db.missions.aggregate(pipeline)
+
+    # Print the results
+    found_one = False
+    for result in results:
+        found_one = True
+        # The [0] is because the starships field is actually a list of results
+        # matching the join, and I don't feel like enforcing uniqueness.
+        print(f"{result["starships"][0]["name"]}: {result["title"]}")
+
+    if not found_one:
+        print("No results found. Did you create the database?")
+        return
+
+
 def show_prefix_codes(with_encryption):
     client = connect_to_mongo(with_encryption)
     db = client[DB_NAME]
@@ -263,7 +310,10 @@ def main():
         destroy_database()
     elif args.demonstrate_lookup:
         print("Showing demonstration lookups...")
-        perform_lookup(args.encryption)
+        perform_mission_lookup(args.encryption)
+    elif args.list_missions:
+        print("Listing missions with starship names...")
+        perform_starship_lookup(args.encryption)
     elif args.list_prefix_codes:
         print("Showing all starship prefix codes...")
         show_prefix_codes(args.encryption)
