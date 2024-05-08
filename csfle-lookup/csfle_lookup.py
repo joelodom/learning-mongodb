@@ -53,13 +53,9 @@ def create_parser():
                         action="store_true",
                         help="destroys the database")
 
-    group.add_argument("--demonstrate-without-encryption",
+    group.add_argument("--demonstrate-lookup",
                         action="store_true",
-                        help="run through some lookups without encryption")
-
-    group.add_argument("--demonstrate-with-encryption",
-                        action="store_true",
-                        help="shows how encryption should work (but doesn't)")
+                        help="demonstrate some lookup scenarios")
 
     return parser
 
@@ -117,6 +113,40 @@ def destroy_database():
     client.drop_database(DB_NAME)
 
 
+def perform_lookup():
+    """
+    Performs a simple lookup for demonstration purposes.
+    """
+ 
+    client = connect_to_mongo()
+    db = client[DB_NAME]
+
+    pipeline = [
+        {
+            "$lookup": {
+                "from": MISSIONS_COLLECTION,  # The collection to join
+                "localField": "starship_id",  # The field from the starships collection
+                "foreignField": "starship_id",  # The field from the missions collection
+                "as": "assigned_missions"  # The field that will hold the joined data
+            }
+        }
+    ]
+
+    results = db.starships.aggregate(pipeline)
+
+    # Print the results
+    found_one = False
+    for result in results:
+        found_one = True
+        print(f"Missions for {result["name"]}:")
+        for mission in result["assigned_missions"]:
+            print(f"  {mission["title"]}")
+
+    if not found_one:
+        print("No results found. Did you create the database?")
+        return
+
+
 def main():
     parser = create_parser()
     args = parser.parse_args()
@@ -129,10 +159,9 @@ def main():
         print("Destroying the database...")
         destroy_database()
         print("Database destruction complete.")
-    elif args.demonstrate_without_encryption:
-        print("Showing demonstration without encryption...")
-    elif args.demonstrate_with_encryption:
-        print("Showing demonstration with encryption (which will fail)...")
+    elif args.demonstrate_lookup:
+        print("Showing demonstration lookups...")
+        perform_lookup()
     else:
         parser.print_help()
     
