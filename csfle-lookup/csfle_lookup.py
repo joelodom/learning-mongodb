@@ -78,10 +78,6 @@ def connect_to_mongo():
 def setup_database():
     """
     Set up the database for first use.
-
-    Sets up a MongoDB database named 'star_trek' with two collections:
-    'starships' and 'missions'. Errors out if the database or collections
-    already exist.
     """
 
     client = connect_to_mongo()
@@ -105,7 +101,21 @@ def setup_database():
                 f"Collection {collection_name} already exists in {DB_NAME} database.")
         db[collection_name].insert_many(data)
 
-    print("Database setup complete with sample data.")
+
+def destroy_database():
+    """
+    Destroys the MongoDB database.
+
+    The user will need the dbAdmin role on the database to destroy it.
+    """
+
+    client = connect_to_mongo()
+
+    if DB_NAME not in client.list_database_names():
+        raise Exception(f"Database '{DB_NAME}' does not exist.")
+
+    client.drop_database(DB_NAME)
+
 
 def main():
     parser = create_parser()
@@ -114,8 +124,11 @@ def main():
     if args.setup_database:
         print("Setting up database before first use...")
         setup_database()
-    elif args.setup_database:
+        print("Database setup complete with sample data.")
+    elif args.destroy_database:
         print("Destroying the database...")
+        destroy_database()
+        print("Database destruction complete.")
     elif args.demonstrate_without_encryption:
         print("Showing demonstration without encryption...")
     elif args.demonstrate_with_encryption:
