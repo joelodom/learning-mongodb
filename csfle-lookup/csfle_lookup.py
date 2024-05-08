@@ -3,6 +3,18 @@ This is a toy program to experiment with $lookup and client-side-field-level
 encryption in MongoDB.
 
 Author: Joel Odom
+
+Here are some steps to demonstrate how CSFLE works (and how lookup should work):
+
+  1. Create a database without encryption (see --help)
+  2. You can list all the prefix codes
+  3. You can perform a lookup on the missions
+  4. Destroy the database
+  5. Create the database with encryption
+  6. You can list all the prefix codes
+  7. If you try to list the codes without specifying encryption you see gibberish
+  8. You can't do a lookup, even though the field isn't even used for the lookup
+  9. If you turn off encryption, you can do the lookup because the field isn't used for the lookup
 """
 
 import argparse
@@ -27,10 +39,12 @@ DB_NAME = "star_trek"
 STARSHIPS_COLLECTION = "starships"
 MISSIONS_COLLECTION = "missions"
 
+RELIANT_PREFIX_CODE = 16309
+
 STARSHIPS_DATA = [
     {"starship_id": 1, "name": "USS Enterprise", "prefix_code": 31415},
     {"starship_id": 2, "name": "USS Voyager", "prefix_code": 27182},
-    {"starship_id": 3, "name": "USS Reliant", "prefix_code": 16309}
+    {"starship_id": 3, "name": "USS Reliant", "prefix_code": RELIANT_PREFIX_CODE}
 ]
 
 MISSIONS_DATA = [
@@ -73,6 +87,10 @@ def create_parser():
     group.add_argument("--demonstrate-lookup",
                         action="store_true",
                         help="demonstrate some lookup scenarios")
+    
+    group.add_argument("--list-prefix-codes",
+                       action="store_true",
+                       help="list all starships' prefix codes")
 
     parser.add_argument("--encryption",
                         action="store_true",
@@ -109,7 +127,7 @@ def connect_to_mongo(with_encyption):
                     "prefix_code": {
                         "encrypt": {
                             "bsonType": "int",
-                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
+                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
                             "keyId": [key_id]
                         }
                     }
@@ -220,6 +238,18 @@ def perform_lookup(with_encryption):
         print("No results found. Did you create the database?")
         return
 
+def show_prefix_codes(with_encryption):
+    client = connect_to_mongo(with_encryption)
+    db = client[DB_NAME]
+    results = db[STARSHIPS_COLLECTION].find()
+    found_one = False
+    for result in results:
+        found_one = True
+        print(f"  {result["name"]}: {result["prefix_code"]}")
+    if not found_one:
+        print("No results found. Did you create the database?")
+        return
+
 
 def main():
     parser = create_parser()
@@ -234,6 +264,9 @@ def main():
     elif args.demonstrate_lookup:
         print("Showing demonstration lookups...")
         perform_lookup(args.encryption)
+    elif args.list_prefix_codes:
+        print("Showing all starship prefix codes...")
+        show_prefix_codes(args.encryption)
     else:
         parser.print_help()
     
