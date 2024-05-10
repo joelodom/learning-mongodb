@@ -178,8 +178,10 @@ def setup_database(with_encryption):
             CodecOptions(uuid_representation=STANDARD)
         )
 
-        # Create a data key (which is stored in encrypted form in the database)
-        # Use a single data key for everything in this example
+        # Create a data key (which is stored in encrypted form in the database).
+        # Use a single data key for everything in this example. Though the
+        # returned value isn't used, this step creates the data key in the
+        # database.
         data_key_id = client_encryption.create_data_key("local")
 
     # Create the database, collections and documents
