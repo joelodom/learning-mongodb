@@ -38,13 +38,31 @@ client_encryption = ClientEncryption(
 # after this statement.
 data_key_id = client_encryption.create_data_key("local")
 
-# Define encryption schemas for the collections
+# Sample documents and encryption schemas
+
+employee_docs = [
+    {"name": "James T. Kirk", "salary": 50000, "department_id": 1, "secret_code": 16309},
+    {"name": "Spock", "salary": 60000, "department_id": 2, "secret_code": 31415},
+    {"name": "Leonard McCoy", "salary": 58000, "department_id": 1, "secret_code": 27182}
+]
+
+department_docs = [
+    {"department_id": 1, "name": "Engineering", "budget": 150000, "secret_code": 12345},
+    {"department_id": 2, "name": "Science", "budget": 130000, "secret_code": 54321}
+]
 
 employee_schema = {
     f"{DB_NAME}.employees": {
         "bsonType": "object",
         "properties": {
             "salary": {
+                "encrypt": {
+                    "bsonType": "int",
+                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                    "keyId": [data_key_id]
+                }
+            },
+            "secret_code": {
                 "encrypt": {
                     "bsonType": "int",
                     "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
@@ -60,6 +78,13 @@ department_schema = {
         "bsonType": "object",
         "properties": {
             "budget": {
+                "encrypt": {
+                    "bsonType": "int",
+                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                    "keyId": [data_key_id]
+                }
+            },
+            "secret_code": {
                 "encrypt": {
                     "bsonType": "int",
                     "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
@@ -89,19 +114,6 @@ department_auto_encryption_opts=AutoEncryptionOpts(
 
 department_client = MongoClient(
     MONGO_URI, auto_encryption_opts=department_auto_encryption_opts)
-
-# Sample documents to insert into the employees collection
-employee_docs = [
-    {"name": "James T. Kirk", "salary": 50000, "department_id": 1},
-    {"name": "Spock", "salary": 60000, "department_id": 2},
-    {"name": "Leonard McCoy", "salary": 58000, "department_id": 1}
-]
-
-# Sample documents to insert into the departments collection
-department_docs = [
-    {"department_id": 1, "name": "Engineering", "budget": 150000},
-    {"department_id": 2, "name": "Science", "budget": 130000}
-]
 
 # Insert documents into the collections
 employee_client[DB_NAME].employees.insert_many(employee_docs)

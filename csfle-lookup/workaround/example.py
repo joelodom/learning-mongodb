@@ -66,12 +66,30 @@ pipeline = [
         },
     },
     {
-        "$unwind": "$department_info"
+        "$set": {
+        "department_info": { "$first": "$department_info" }
+        }
+    },
+    {
+        "$set": {
+            "merged": {
+            "$mergeObjects": [
+                "$$ROOT",
+                "$department_info"
+                ]
+            }
+        }
+    },
+    {
+        "$set": {
+            "secret_code": "$merged.secret_code"
+        }
     },
     {
         "$project": {
             "_id": 0,
-            "department_info._id": 0
+            "department_info._id": 0,
+            "merged": 0
         }
     }
 ]
