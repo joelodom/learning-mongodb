@@ -9,6 +9,7 @@ the schema map that specifies the encrypted fields.
 by Joel Odom
 """
 
+from pprint import pprint
 from pymongo import MongoClient
 import os
 from pymongo.encryption import ClientEncryption
@@ -62,6 +63,15 @@ pipeline = [
             "localField": "department_id",
             "foreignField": "department_id",
             "as": "department_info"
+        },
+    },
+    {
+        "$unwind": "$department_info"
+    },
+    {
+        "$project": {
+            "_id": 0,
+            "department_info._id": 0
         }
     }
 ]
@@ -69,4 +79,4 @@ pipeline = [
 results = db.employees.aggregate(pipeline)
 
 for result in results:
-    print(result)
+    pprint(result)
