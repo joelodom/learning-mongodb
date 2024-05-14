@@ -41,14 +41,14 @@ data_key_id = client_encryption.create_data_key("local")
 # Sample documents and encryption schemas
 
 employee_docs = [
-    {"name": "James T. Kirk", "salary": 50000, "department_id": 1, "secret_code": 16309},
-    {"name": "Spock", "salary": 60000, "department_id": 2, "secret_code": 31415},
-    {"name": "Leonard McCoy", "salary": 58000, "department_id": 1, "secret_code": 27182}
+    {"name": "James T. Kirk", "salary": 50000, "department_id": 1, "secret_code": { "code": 16309 }},
+    {"name": "Spock", "salary": 60000, "department_id": 2, "secret_code": { "code": 31415}},
+    {"name": "Leonard McCoy", "salary": 58000, "department_id": 1, "secret_code": { "code": 27182}}
 ]
 
 department_docs = [
-    {"department_id": 1, "name": "Engineering", "budget": 150000, "secret_code": 12345},
-    {"department_id": 2, "name": "Science", "budget": 130000, "secret_code": 54321}
+    {"department_id": 1, "name": "Engineering", "budget": 150000, "secret_code": { "code": 12345}},
+    {"department_id": 2, "name": "Science", "budget": 130000, "secret_code": { "code": 54321}}
 ]
 
 employee_schema = {
@@ -63,10 +63,15 @@ employee_schema = {
                 }
             },
             "secret_code": {
-                "encrypt": {
-                    "bsonType": "int",
-                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
-                    "keyId": [data_key_id]
+                "bsonType": "object",
+                "properties": {
+                    "code": {
+                        "encrypt": {
+                            "bsonType": "int",
+                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                            "keyId": [data_key_id]
+                        }
+                    }
                 }
             }
         }
@@ -85,10 +90,15 @@ department_schema = {
                 }
             },
             "secret_code": {
-                "encrypt": {
-                    "bsonType": "int",
-                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
-                    "keyId": [data_key_id]
+                "bsonType": "object",
+                "properties": {
+                    "code": {
+                        "encrypt": {
+                            "bsonType": "int",
+                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                            "keyId": [data_key_id]
+                        }
+                    }
                 }
             }
         }

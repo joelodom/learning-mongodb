@@ -43,7 +43,8 @@ KMS_PROVIDERS = {
 # encrypted field. Notice that we don't have to specify a schema map or key ids
 # because we are only doing reads and CSFLE handles that automagically. The
 # $lookup wouldn't work if we didn't bypass automatic encryption because we
-# don't (yet) support automatic encryption for CSFLE.
+# don't (yet) support automatic encryption for CSFLE. We perform a merge
+# to add some additional color.
 #
 
 employee_auto_encryption_opts=AutoEncryptionOpts(
@@ -72,24 +73,18 @@ pipeline = [
     },
     {
         "$set": {
-            "merged": {
+            "secret_code": {
             "$mergeObjects": [
-                "$$ROOT",
-                "$department_info"
+                "$$ROOT.secret_code",
+                "$department_info.secret_code"
                 ]
             }
         }
     },
     {
-        "$set": {
-            "secret_code": "$merged.secret_code"
-        }
-    },
-    {
         "$project": {
             "_id": 0,
-            "department_info._id": 0,
-            "merged": 0
+            "department_info._id": 0
         }
     }
 ]
