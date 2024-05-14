@@ -1,12 +1,21 @@
-from bson import STANDARD, CodecOptions
+"""
+This sample program demonstrates a workaround for $lookup and MongoDB CSFLE when
+you only need to join on an unencrypted field and not write back to the database
+in the aggregation pipeline.
+
+See setup.py for how to set up the database for this program, including
+the schema map that specifies the encrypted fields.
+
+by Joel Odom
+"""
+
 from pymongo import MongoClient
 import os
 from pymongo.encryption import ClientEncryption
-
-DEMONSTRATE_DECRYPTION = True  # Switch to false to show encrypted values
+from pymongo.encryption_options import AutoEncryptionOpts
 
 #
-# Parameters
+# Little Parameters
 #
 
 PASSWORD = os.getenv("JOEL_ATLAS_PWD")
@@ -29,16 +38,23 @@ KMS_PROVIDERS = {
 }
 
 #
-# Connect to MongoDB and perform a $lookup where both collections are encrypted.
-# The results will contain the encrypted values because we can't do
-# automatic encryption in a $lookup.
+# Connect to MongoDB and perform a $lookup where both collections have an
+# encrypted field. Notice that we don't have to specify a schema map or key ids
+# because we are only doing reads and CSFLE handles that automagically. The
+# $lookup wouldn't work if we didn't bypass automatic encryption because we
+# don't (yet) support automatic encryption for CSFLE.
 #
 
-# Connect to MongoDB
-client = MongoClient(MONGO_URI)
+employee_auto_encryption_opts=AutoEncryptionOpts(
+    KMS_PROVIDERS,
+    KEY_VAULT_NAMESPACE,
+    bypass_auto_encryption=True  # secret sauce
+    )
+
+client = MongoClient(
+    MONGO_URI, auto_encryption_opts=employee_auto_encryption_opts)
 db = client[DB_NAME]
 
-# Perform a $lookup to join employees with departments
 pipeline = [
     {
         "$lookup": {
@@ -50,33 +66,7 @@ pipeline = [
     }
 ]
 
-# Execute the aggregation
 results = db.employees.aggregate(pipeline)
 
-#
-# Now use explicit decryption to decrypt salaries and budgets. Notice that I 
-# can use the same ClientEncryption for both.
-#
-
-client_encryption = ClientEncryption(
-    KMS_PROVIDERS,
-    KEY_VAULT_NAMESPACE,
-    MongoClient(MONGO_URI), # A dedicated encryption client
-    CodecOptions(uuid_representation=STANDARD)
-)
-
-# Decrypting fields manually
 for result in results:
-    if DEMONSTRATE_DECRYPTION:
-        if "salary" in result:
-            decrypted_value = client_encryption.decrypt(result["salary"])
-            result["salary"] = decrypted_value
-        if "budget" in result["department_info"][0]:
-            decrypted_value = client_encryption.decrypt(result["department_info"][0]["budget"])
-            result["department_info"][0]["budget"] = decrypted_value
-
     print(result)
-
-# Clean up
-client_encryption.close()
-client.close()
