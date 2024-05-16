@@ -22,6 +22,9 @@ the lookup. Observe a similar behavior: you can omit the --encryption flag and
 it works (because the prefix code is not used), but when you add the encryption
 flag it won't work because a collection with automatic encryption tied to it
 can't be used in a lookup.
+
+Also notice that you can list episodes and writers, which fails when using an
+encrypting client even though neither of the collections has encrypted fields.
 """
 
 import argparse
@@ -45,6 +48,8 @@ MONGO_URI = f"mongodb+srv://joelodom:{PASSWORD}@joelqecluster.udwxc.mongodb.net/
 DB_NAME = "star_trek"
 STARSHIPS_COLLECTION = "starships"
 MISSIONS_COLLECTION = "missions"
+WRITERS_COLLECTION = "writers"
+EPISODES_COLLECTION = "episodes"
 
 RELIANT_PREFIX_CODE = 16309
 
@@ -59,6 +64,16 @@ MISSIONS_DATA = [
     {"mission_id": 102, "title": "Patrol Neutral Zone", "starship_id": 1},
     {"mission_id": 103, "title": "Diplomatic Mission to Cardassia", "starship_id": 2},
     {"mission_id": 104, "title": "Exact Revenge on Admiral Kirk", "starship_id": 3}
+]
+
+WRITERS_DATA = [  # nothing encrypted
+    {"episode_number": 28, "writer": "Harlan Ellison"},
+    {"episode_number": 44, "writer": "David Gerrold"}
+]
+
+EPISODES_DATA = [  # nothing encrypted
+    {"episode_number": 28, "title": "The City on the Edge of Forever", "writer": 1},
+    {"episode_number": 44, "title": "The Trouble with Tribbles", "writer": 1}
 ]
 
 KEY_VAULT_DB = DB_NAME  # Reuse the same database
@@ -102,6 +117,10 @@ def create_parser():
     group.add_argument("--list-prefix-codes",
                        action="store_true",
                        help="list all starships' prefix codes")
+
+    group.add_argument("--list-episodes",
+                       action="store_true",
+                       help="list all episodes and their writers")
 
     parser.add_argument("--encryption",
                         action="store_true",
@@ -189,7 +208,9 @@ def setup_database(with_encryption):
     db = client[DB_NAME]
     collections_data = [
         (STARSHIPS_COLLECTION, STARSHIPS_DATA),
-        (MISSIONS_COLLECTION, MISSIONS_DATA)
+        (MISSIONS_COLLECTION, MISSIONS_DATA),
+        (WRITERS_COLLECTION, WRITERS_DATA),
+        (EPISODES_COLLECTION, EPISODES_DATA)
         ]
     for collection_name, data in collections_data:
         if collection_name in db.list_collection_names():
@@ -300,6 +321,38 @@ def show_prefix_codes(with_encryption):
         return
 
 
+def list_episodes(with_encryption):
+    """
+    Perform a lookup on two unencrypted collections using a client that has encryption.
+    """
+
+    client = connect_to_mongo(with_encryption)
+    db = client[DB_NAME]
+
+    pipeline = [
+        {
+            "$lookup": {
+                "from": WRITERS_COLLECTION,
+                "localField": "episode_number",
+                "foreignField": "episode_number",
+                "as": "episodes"
+            }
+        }
+    ]
+
+    results = db.episodes.aggregate(pipeline)
+
+    # Print the results
+    found_one = False
+    for result in results:
+        found_one = True
+        print(f"{result["title"]} ({result["episodes"][0]["writer"]})")
+
+    if not found_one:
+        print("No results found. Did you create the database?")
+        return
+
+
 def main():
     parser = create_parser()
     args = parser.parse_args()
@@ -319,6 +372,9 @@ def main():
     elif args.list_prefix_codes:
         print("Showing all starship prefix codes...")
         show_prefix_codes(args.encryption)
+    elif args.list_episodes:
+        print("Listing episodes...")
+        list_episodes(args.encryption)
     else:
         parser.print_help()
     
