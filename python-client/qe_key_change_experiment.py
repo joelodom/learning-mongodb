@@ -72,39 +72,39 @@ client_encryption = ClientEncryption(
 customer_master_key_credentials = {} # no creds because using a local key CMK
 
 client_encryption.create_encrypted_collection(
-    encrypted_client[encrypted_database_name],
+    encrypted_mongo_client[encrypted_database_name],
     encrypted_collection_name,
     encrypted_fields_map,
     kms_provider_name,
     customer_master_key_credentials,
 )
 
-SECRET_SSN = f"{random.randint(0, 999999999):09d}"
+# SECRET_SSN = f"{random.randint(0, 999999999):09d}"
 
-patient_document = {
-    "patientName": "Jon Doe",
-    "patientId": 12345678,
-    "patientRecord": {
-        "ssn": SECRET_SSN,
-        "billing": {
-            "type": "Visa",
-            "number": "4111111111111111",
-        },
-    },
-}
+# patient_document = {
+#     "patientName": "Jon Doe",
+#     "patientId": 12345678,
+#     "patientRecord": {
+#         "ssn": SECRET_SSN,
+#         "billing": {
+#             "type": "Visa",
+#             "number": "4111111111111111",
+#         },
+#     },
+# }
 
-encrypted_collection = encrypted_mongo_client[encrypted_database_name][encrypted_collection_name]
-result = encrypted_collection.insert_one(patient_document)
-print(f"One record inserted: {result.inserted_id}")
-print()
+# encrypted_collection = encrypted_mongo_client[encrypted_database_name][encrypted_collection_name]
+# result = encrypted_collection.insert_one(patient_document)
+# print(f"One record inserted: {result.inserted_id}")
+# print()
 
-# At this point in working through the quick start, I can see reconds appear
-# in Atlas. w00t!
+# # At this point in working through the quick start, I can see reconds appear
+# # in Atlas. w00t!
 
-find_result = encrypted_collection.find_one({
-    "patientRecord.ssn": SECRET_SSN
-})
+# find_result = encrypted_collection.find_one({
+#     "patientRecord.ssn": SECRET_SSN
+# })
 
-print(find_result)
-print()
+# print(find_result)
+# print()
 
