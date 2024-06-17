@@ -53,6 +53,7 @@ if USE_AZURE_KEY_VAULT:
             "clientSecret": AZURE_CLIENT_SECRET
         }
     }
+
     customer_master_key_credentials = {
         "keyName": "joel-qe-key",
         #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/6672e5ebdf8a4607ad0f7049642a8169"
@@ -98,7 +99,7 @@ try:
         encrypted_mongo_client[encrypted_database_name],
         encrypted_collection_name,
         encrypted_fields_map,
-        "azure",
+        "azure" if USE_AZURE_KEY_VAULT else "local",
         customer_master_key_credentials,
     )
 except EncryptedCollectionError:
