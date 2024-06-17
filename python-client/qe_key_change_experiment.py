@@ -15,7 +15,7 @@ from bson.binary import STANDARD
 import random
 from pymongo.errors import EncryptedCollectionError
 
-USE_AZURE_KEY_VAULT = False #  False to switch to the hardcoded local key
+USE_AZURE_KEY_VAULT = True #  False to switch to the hardcoded local key
 
 PASSWORD=os.getenv("JOEL_ATLAS_PWD")
 if PASSWORD is None:
@@ -87,14 +87,15 @@ encrypted_fields_map = {
     ]
 }
 
-client_encryption = ClientEncryption(
-    kms_providers=kms_provider_credentials,
-    key_vault_namespace=key_vault_namespace,
-    key_vault_client=encrypted_mongo_client,
-    codec_options=CodecOptions(uuid_representation=STANDARD)
-)
+database_names = encrypted_mongo_client.list_database_names()
+if key_vault_database_name not in database_names:
+    client_encryption = ClientEncryption(
+        kms_providers=kms_provider_credentials,
+        key_vault_namespace=key_vault_namespace,
+        key_vault_client=encrypted_mongo_client,
+        codec_options=CodecOptions(uuid_representation=STANDARD)
+    )
 
-try:
     client_encryption.create_encrypted_collection(
         encrypted_mongo_client[encrypted_database_name],
         encrypted_collection_name,
@@ -102,8 +103,6 @@ try:
         "azure" if USE_AZURE_KEY_VAULT else "local",
         customer_master_key_credentials,
     )
-except EncryptedCollectionError:
-    pass # probably already exists
 
 SECRET_SSN = f"{random.randint(0, 999999999):09d}"
 SECRET_NUMBER = "4111111111111111"
