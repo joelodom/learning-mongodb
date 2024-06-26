@@ -26,7 +26,7 @@ KMS_PROVIDER_CREDENTIALS = {
     },
 }
 
-CRYPT_SHARED_LIB = "/Users/joel.odom/mongo_crypt_shared_v1-macos-arm64-enterprise-7.0.6/lib/mongo_crypt_v1.dylib"
+CRYPT_SHARED_LIB = "/Users/joel.odom/mongo_crypt_shared_v1-macos-arm64-enterprise-8.0.0-rc9/lib/mongo_crypt_v1.dylib"
 
 auto_encryption_options = AutoEncryptionOpts(  # use automatic encryption
     KMS_PROVIDER_CREDENTIALS,
@@ -38,11 +38,15 @@ auto_encryption_options = AutoEncryptionOpts(  # use automatic encryption
 # Connect to the database
 #
 
-# PASSWORD=os.getenv("JOEL_ATLAS_PWD")
-# if PASSWORD is None:
-#     raise Exception("Password not set in environment.")
-# URI = f"mongodb+srv://joelodom:{PASSWORD}@joelqecluster.udwxc.mongodb.net/?retryWrites=true&w=majority&appName=JoelQECluster"
 URI = "mongodb://127.0.0.1:27017/"
+
+USE_ATLAS = False
+if USE_ATLAS:
+    PASSWORD=os.getenv("JOEL_ATLAS_PWD")
+    if PASSWORD is None:
+        raise Exception("Password not set in environment.")
+    URI = f"mongodb+srv://joelodom:{PASSWORD}@joelqecluster.udwxc.mongodb.net/?retryWrites=true&w=majority&appName=JoelQECluster"
+
 DB_NAME = "range_query_testing"
 
 mongo_client = MongoClient(URI, auto_encryption_opts=auto_encryption_options)
@@ -67,7 +71,7 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "bsonType": "int",
             "queries":
             [ {
-                "queryType": "rangePreview",
+                "queryType": "range",
                 "sparsity": 2,
                 "min": SECRET_INT_MIN,
                 "max": SECRET_INT_MAX
@@ -78,22 +82,22 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
 
 ENCRYPTED_ITEMS_COLLECTION = "items"
 
-# if ENCRYPTED_ITEMS_COLLECTION not in db.list_collection_names():
-#     # create the (partially) encrypted collection on the first run
-#     client_encryption = ClientEncryption(  # a kind of helper
-#         kms_providers=KMS_PROVIDER_CREDENTIALS,
-#         key_vault_namespace=KEY_VAULT_NAMESPACE,
-#         key_vault_client=mongo_client,
-#         codec_options=CodecOptions(uuid_representation=STANDARD)
-#     )
-#     CMK_CREDENTIALS = {}  # no creds because using a local key CMK
-#     client_encryption.create_encrypted_collection(
-#         mongo_client[DB_NAME],
-#         ENCRYPTED_ITEMS_COLLECTION,
-#         ENCRYPTED_FIELDS_MAP,
-#         KMS_PROVIDER_NAME,
-#         CMK_CREDENTIALS,
-#     )
+if ENCRYPTED_ITEMS_COLLECTION not in db.list_collection_names():
+    # create the (partially) encrypted collection on the first run
+    client_encryption = ClientEncryption(  # a kind of helper
+        kms_providers=KMS_PROVIDER_CREDENTIALS,
+        key_vault_namespace=KEY_VAULT_NAMESPACE,
+        key_vault_client=mongo_client,
+        codec_options=CodecOptions(uuid_representation=STANDARD)
+    )
+    CMK_CREDENTIALS = {}  # no creds because using a local key CMK
+    client_encryption.create_encrypted_collection(
+        mongo_client[DB_NAME],
+        ENCRYPTED_ITEMS_COLLECTION,
+        ENCRYPTED_FIELDS_MAP,
+        KMS_PROVIDER_NAME,
+        CMK_CREDENTIALS,
+    )
 
 def generate_nonsense_word():
     VOWELS = "aeiou"
