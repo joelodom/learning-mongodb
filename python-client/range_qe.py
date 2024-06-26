@@ -5,7 +5,8 @@ Experimenting with QE range queries.
 import os
 from pprint import pprint
 import random
-
+from bson import STANDARD, CodecOptions
+from pymongo.encryption import ClientEncryption
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
 
@@ -50,6 +51,49 @@ db = mongo_client[DB_NAME]
 # Add some data to the database
 #
 
+SECRET_INT_MIN = -1000000
+SECRET_INT_MAX = 1000000
+
+ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
+    "fields": [
+        # {
+        #     "path": "name",
+        #     "bsonType": "string",
+        #     "queries": [ {"queryType": "equality"} ]  # equality queryable
+        # },
+        {
+            "path": "secret_int",
+            "bsonType": "int",
+            "queries":
+            [ {
+                "queryType": "rangePreview",
+                "sparsity": 2,
+                "min": SECRET_INT_MIN,
+                "max": SECRET_INT_MAX
+            } ]  # range queryable
+        }
+    ]
+}
+
+ENCRYPTED_ITEMS_COLLECTION = "items"
+
+if ENCRYPTED_ITEMS_COLLECTION not in db.list_collection_names():
+    # create the (partially) encrypted collection on the first run
+    client_encryption = ClientEncryption(  # a kind of helper
+        kms_providers=KMS_PROVIDER_CREDENTIALS,
+        key_vault_namespace=KEY_VAULT_NAMESPACE,
+        key_vault_client=mongo_client,
+        codec_options=CodecOptions(uuid_representation=STANDARD)
+    )
+    CMK_CREDENTIALS = {}  # no creds because using a local key CMK
+    client_encryption.create_encrypted_collection(
+        mongo_client[DB_NAME],
+        ENCRYPTED_ITEMS_COLLECTION,
+        ENCRYPTED_FIELDS_MAP,
+        KMS_PROVIDER_NAME,
+        CMK_CREDENTIALS,
+    )
+
 def generate_nonsense_word():
     VOWELS = "aeiou"
     CONSONANTS = "bcdfghjklmnpqrstvwxyz"
@@ -74,13 +118,15 @@ def create_some_items(count):
         item_name = generate_nonsense_word()
         item_to_create = {
             "name": item_name,
-            "description": generate_nonsense_words(20)
+            "description": generate_nonsense_words(20),
+            "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX)
         }
         created_items_dicts.append(item_to_create)
     # (creates db and collection, if they don't exist)
     db.items.insert_many(created_items_dicts)
 
-create_some_items(5)
+ITEMS_TO_ADD = 5
+create_some_items(ITEMS_TO_ADD)
 
 #
 # Print stuff
