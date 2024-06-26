@@ -56,16 +56,7 @@ if USE_AZURE_KEY_VAULT:
 
     customer_master_key_credentials = {
         "keyName": "joel-qe-key",
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/6672e5ebdf8a4607ad0f7049642a8169"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/e8f82dde707c46b7ad2962e8c534b2a5"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/fb4cd72418d544999c0ee38b994ffe26"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/4d892db7ea6341c39cad71f976ab44d7"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/ba74d78ae80542fe85e05c26110ca05d"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/c4a0497955784ba9b24803062d64dc5c"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/3c068b2134e441df9c5d7fcd28fe174a"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/330df1d6498b4bb5a5a66346117f02b0"
-        "keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/30f48be8017645a6a4ec3d36aaa08b6a"
-        #"keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/db062737cabf440bafbb34c28f5bb81d"
+        "keyVaultEndpoint": "https://joel-key-vault.vault.azure.net/keys/joel-qe-key/db062737cabf440bafbb34c28f5bb81d"
     }
 
 CRYPT_SHARED_LIB = "/Users/joel.odom/mongo_crypt_shared_v1-macos-arm64-enterprise-7.0.6/lib/mongo_crypt_v1.dylib"
