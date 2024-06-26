@@ -72,9 +72,10 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "sparsity": 2,
-                "min": SECRET_INT_MIN,
-                "max": SECRET_INT_MAX
+                "trimFactor": 8
+                #"sparsity": 2,
+                #"min": SECRET_INT_MIN,
+                #"max": SECRET_INT_MAX
             } ]  # range queryable
         }
     ]
