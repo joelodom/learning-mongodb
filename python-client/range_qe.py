@@ -5,6 +5,7 @@ Experimenting with QE range queries.
 import os
 from pprint import pprint
 import random
+import time
 from bson import STANDARD, CodecOptions
 from pymongo.encryption import ClientEncryption
 from pymongo import MongoClient
@@ -143,6 +144,8 @@ while True:  # not with a bang, but with a loop
         "secret_int": { "$gt": int(SECRET_INT_MAX * 0.9) }
     }
 
+    start_time = time.time()
+    
     results = db.items.find(QUERY)
 
     print("Found items:")
@@ -150,4 +153,8 @@ while True:  # not with a bang, but with a loop
     for result in results:
         count += 1
         #pprint(result)
+
+    end_time = time.time()
+
     print(f"Count: {count}")
+    print(f"Execution time: {end_time - start_time:.4f} seconds")
