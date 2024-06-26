@@ -72,7 +72,7 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 8
+                "trimFactor": 0 # zero will be the default
                 #"sparsity": 2,
                 #"min": SECRET_INT_MIN,
                 #"max": SECRET_INT_MAX
@@ -131,15 +131,23 @@ def create_some_items(count):
     # (creates db and collection, if they don't exist)
     db.items.insert_many(created_items_dicts)
 
-ITEMS_TO_ADD = 5
-create_some_items(ITEMS_TO_ADD)
+while True:  # not with a bang, but with a loop
+    ITEMS_TO_ADD = 100
+    create_some_items(ITEMS_TO_ADD)
 
-#
-# Print stuff
-#
+    #
+    # Query
+    #
 
-results = db.items.find()
+    QUERY = {
+        "secret_int": { "$gt": int(SECRET_INT_MAX * 0.9) }
+    }
 
-print("All items in database:")
-for result in results:
-    pprint(result)
+    results = db.items.find(QUERY)
+
+    print("Found items:")
+    count = 0
+    for result in results:
+        count += 1
+        #pprint(result)
+    print(f"Count: {count}")
