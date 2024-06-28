@@ -1,7 +1,7 @@
 """
 Experimenting with QE range queries. What I've tested:
 
-  - $gt, $lt, $gte, $lte on an int (though the test is kind of absurd)
+  - $gt, $lt, $gte, $lte on int and long (though the test is kind of absurd)
 """
 
 import os
@@ -59,8 +59,11 @@ db = mongo_client[DB_NAME]
 # Add some data to the database
 #
 
-SECRET_INT_MIN = -1000000
-SECRET_INT_MAX = 1000000
+SECRET_INT_MIN = -100000
+SECRET_INT_MAX = 100000
+
+SECRET_LONG_MIN = 474836472147483647
+SECRET_LONG_MAX = 474836472147483649
 
 ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
     "fields": [
@@ -72,6 +75,18 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
         {
             "path": "secret_int",
             "bsonType": "int",
+            "queries":
+            [ {
+                "queryType": "range",
+                "trimFactor": 0 # zero will be the default
+                #"sparsity": 2,
+                #"min": SECRET_INT_MIN,
+                #"max": SECRET_INT_MAX
+            } ]  # range queryable
+        },
+        {
+            "path": "secret_long",
+            "bsonType": "long",
             "queries":
             [ {
                 "queryType": "range",
@@ -128,7 +143,8 @@ def create_some_items(count):
         item_to_create = {
             "name": item_name,
             "description": generate_nonsense_words(20),
-            "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX)
+            "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX),
+            "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX)
         }
         created_items_dicts.append(item_to_create)
     # (creates db and collection, if they don't exist)
@@ -148,6 +164,10 @@ while True:  # not with a bang, but with a loop
             "$lt": int(SECRET_INT_MAX * 0.95),
             "$gte": int(SECRET_INT_MAX * 0.9),
             "$lte": int(SECRET_INT_MAX * 0.95),
+        },
+        "secret_long": {
+            "$gte": (SECRET_LONG_MIN),
+            "$lte": (SECRET_LONG_MIN),
         }
     }
 
