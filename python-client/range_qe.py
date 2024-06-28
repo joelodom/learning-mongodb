@@ -1,5 +1,7 @@
 """
-Experimenting with QE range queries.
+Experimenting with QE range queries. What I've tested:
+
+  - $gt, $lt, $gte, $lte on an int (though the test is kind of absurd)
 """
 
 import os
@@ -141,14 +143,18 @@ while True:  # not with a bang, but with a loop
     #
 
     QUERY = {
-        "secret_int": { "$gt": int(SECRET_INT_MAX * 0.9) }
+        "secret_int": {
+            "$gt": int(SECRET_INT_MAX * 0.9),
+            "$lt": int(SECRET_INT_MAX * 0.95),
+            "$gte": int(SECRET_INT_MAX * 0.9),
+            "$lte": int(SECRET_INT_MAX * 0.95),
+        }
     }
 
     start_time = time.time()
     
     results = db.items.find(QUERY)
 
-    print("Found items:")
     count = 0
     for result in results:
         count += 1
@@ -156,5 +162,5 @@ while True:  # not with a bang, but with a loop
 
     end_time = time.time()
 
-    print(f"Count: {count}")
+    print(f"{count} of {db.items.count_documents({})} items match")
     print(f"Execution time: {end_time - start_time:.4f} seconds")
