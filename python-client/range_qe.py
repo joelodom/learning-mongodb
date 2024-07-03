@@ -13,10 +13,19 @@ from bson import STANDARD, CodecOptions
 from pymongo.encryption import ClientEncryption
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
+import traceback
+import readline # allows input to use up and down arrows
+
+
+print("Welcome to the QE Range sandbox. Type 'help' for a list of commands. Type 'exit' to quit.")
+
+
 
 #
 # AutoEncryptionOpts helper class setup
 #
+
+print("Setting up the AutoEncryptionOpts helper class...")
 
 KMS_PROVIDER_NAME = "local"  # instead of a cloud provider
 KEY_VAULT_NAMESPACE = "encryption.__keyVault"
@@ -38,9 +47,13 @@ auto_encryption_options = AutoEncryptionOpts(  # use automatic encryption
     crypt_shared_lib_path=CRYPT_SHARED_LIB
 )
 
+
+
 #
 # Connect to the database
 #
+
+print("Creating the MongoClient using the connection string in the source code...")
 
 URI = "mongodb://127.0.0.1:27017/"
 
@@ -54,10 +67,11 @@ if USE_ATLAS:
 DB_NAME = "range_query_testing"
 
 mongo_client = MongoClient(URI, auto_encryption_opts=auto_encryption_options)
-db = mongo_client[DB_NAME]
+
+
 
 #
-# Add some data to the database
+# Here is where we define the experimental schema
 #
 
 SECRET_INT_MIN = -100000
@@ -102,8 +116,13 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
 
 ENCRYPTED_ITEMS_COLLECTION = "items"
 
-if ENCRYPTED_ITEMS_COLLECTION not in db.list_collection_names():
-    # create the (partially) encrypted collection on the first run
+
+
+def create_encrypted_collection():
+    if does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION):
+        print("It appears that the encrypted collection already exists. Doing nothing.")
+        print()
+        return
     client_encryption = ClientEncryption(  # a kind of helper
         kms_providers=KMS_PROVIDER_CREDENTIALS,
         key_vault_namespace=KEY_VAULT_NAMESPACE,
@@ -118,70 +137,162 @@ if ENCRYPTED_ITEMS_COLLECTION not in db.list_collection_names():
         KMS_PROVIDER_NAME,
         CMK_CREDENTIALS,
     )
+    if does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION):
+        print("Encrypted collection created.")
+    else:
+        print("It appears that something went wrong...")
+    print()
 
-def generate_nonsense_word():
-    VOWELS = "aeiou"
-    CONSONANTS = "bcdfghjklmnpqrstvwxyz"
-    WORD_LENGTH = random.randint(4, 8)
-    word = ""
-    for i in range(WORD_LENGTH):
-        if i % 2 == 0:
-            # Even indices get a consonant
-            word += random.choice(CONSONANTS)
+
+
+def does_database_exist(db_name):
+    global mongo_client
+    database_names = mongo_client.list_database_names()
+    return db_name in database_names
+
+
+def does_collection_exist(db_name, collection_name):
+    global mongo_client
+    collection_names = mongo_client[db_name].list_collection_names()
+    return collection_name in collection_names
+
+
+def help():
+    print("Available commands:")
+    print("  status                      -  show general status about the experiment")
+    print("  create-encrypted-collection - creates a collection with automatic encryption")
+    print("  destroy-database            -  destroys the database")
+    print("  exit / quit                 -  exits the program")
+    print()
+
+
+def status():
+    print(f"DB_NAME is {DB_NAME}.")
+    print(f"{DB_NAME} {'is' if does_database_exist(DB_NAME) else 'is not'} created.")
+    print(f"ENCRYPTED_ITEMS_COLLECTION is {ENCRYPTED_ITEMS_COLLECTION}.")
+    exists = does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION)
+    print(f"{ENCRYPTED_ITEMS_COLLECTION} {'is' if exists else 'is not'} created.")
+    print()
+
+
+def destroy_database():
+    confirm = input("If you really mean in, say please: ")
+    if confirm == "please":
+        print("Destroying database...")
+        mongo_client.drop_database(DB_NAME)
+    else:
+        print("You didn't say please. Database not destroyed.")
+    print()
+
+
+while True:
+    try:
+        user_input = input(">>> ").strip()
+        
+        if not user_input:
+            continue
+        
+        command, *args = user_input.split()
+        command = command.lower()
+
+        if command in ["exit", "quit"]:
+            print("Goodbye!")
+            print()
+            exit(0)
+        elif command == "help":
+            help()
+        elif command == "status":
+            status()
+        elif command == "create-encrypted-collection":
+            create_encrypted_collection()
+        elif command == "destroy-database":
+            destroy_database()
         else:
-            # Odd indices get a vowel
-            word += random.choice(VOWELS)
-    return word
+            print(f"Unknown command: {command}. Type 'help' for a list of commands.")
+    except Exception as e:
+        traceback.print_exc()
 
-def generate_nonsense_words(count):
-    return ' '.join([generate_nonsense_word() for i in range(count)])
 
-def create_some_items(count):
-    global db
-    created_items_dicts = []
-    for i in range(count):
-        item_name = generate_nonsense_word()
-        item_to_create = {
-            "name": item_name,
-            "description": generate_nonsense_words(20),
-            "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX),
-            "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX)
-        }
-        created_items_dicts.append(item_to_create)
-    # (creates db and collection, if they don't exist)
-    db.items.insert_many(created_items_dicts)
 
-while True:  # not with a bang, but with a loop
-    ITEMS_TO_ADD = 100
-    create_some_items(ITEMS_TO_ADD)
 
-    #
-    # Query
-    #
 
-    QUERY = {
-        "secret_int": {
-            "$gt": int(SECRET_INT_MAX * 0.9),
-            "$lt": int(SECRET_INT_MAX * 0.95),
-            "$gte": int(SECRET_INT_MAX * 0.9),
-            "$lte": int(SECRET_INT_MAX * 0.95),
-        },
-        "secret_long": {
-            "$gte": (SECRET_LONG_MIN),
-            "$lte": (SECRET_LONG_MIN),
-        }
-    }
 
-    start_time = time.time()
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def generate_nonsense_word():
+#     VOWELS = "aeiou"
+#     CONSONANTS = "bcdfghjklmnpqrstvwxyz"
+#     WORD_LENGTH = random.randint(4, 8)
+#     word = ""
+#     for i in range(WORD_LENGTH):
+#         if i % 2 == 0:
+#             # Even indices get a consonant
+#             word += random.choice(CONSONANTS)
+#         else:
+#             # Odd indices get a vowel
+#             word += random.choice(VOWELS)
+#     return word
+
+# def generate_nonsense_words(count):
+#     return ' '.join([generate_nonsense_word() for i in range(count)])
+
+# def create_some_items(count):
+#     global db
+#     created_items_dicts = []
+#     for i in range(count):
+#         item_name = generate_nonsense_word()
+#         item_to_create = {
+#             "name": item_name,
+#             "description": generate_nonsense_words(20),
+#             "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX),
+#             "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX)
+#         }
+#         created_items_dicts.append(item_to_create)
+#     # (creates db and collection, if they don't exist)
+#     db.items.insert_many(created_items_dicts)
+
+# while True:  # not with a bang, but with a loop
+#     ITEMS_TO_ADD = 100
+#     create_some_items(ITEMS_TO_ADD)
+
+#     #
+#     # Query
+#     #
+
+#     QUERY = {
+#         "secret_int": {
+#             "$gt": int(SECRET_INT_MAX * 0.9),
+#             "$lt": int(SECRET_INT_MAX * 0.95),
+#             "$gte": int(SECRET_INT_MAX * 0.9),
+#             "$lte": int(SECRET_INT_MAX * 0.95),
+#         },
+#         "secret_long": {
+#             "$gte": (SECRET_LONG_MIN),
+#             "$lte": (SECRET_LONG_MIN),
+#         }
+#     }
+
+#     start_time = time.time()
     
-    results = db.items.find(QUERY)
+#     results = db.items.find(QUERY)
 
-    count = 0
-    for result in results:
-        count += 1
-        #pprint(result)
+#     count = 0
+#     for result in results:
+#         count += 1
+#         #pprint(result)
 
-    end_time = time.time()
+#     end_time = time.time()
 
-    print(f"{count} of {db.items.count_documents({})} items match")
-    print(f"Execution time: {end_time - start_time:.4f} seconds")
+#     print(f"{count} of {db.items.count_documents({})} items match")
+#     print(f"Execution time: {end_time - start_time:.4f} seconds")
