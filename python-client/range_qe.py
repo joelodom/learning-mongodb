@@ -157,10 +157,63 @@ def does_collection_exist(db_name, collection_name):
     return collection_name in collection_names
 
 
+def generate_nonsense_word():
+    VOWELS = "aeiou"
+    CONSONANTS = "bcdfghjklmnpqrstvwxyz"
+    WORD_LENGTH = random.randint(4, 8)
+    word = ""
+    for i in range(WORD_LENGTH):
+        if i % 2 == 0:
+            # Even indices get a consonant
+            word += random.choice(CONSONANTS)
+        else:
+            # Odd indices get a vowel
+            word += random.choice(VOWELS)
+    return word
+
+def generate_nonsense_words(count):
+    return ' '.join([generate_nonsense_word() for i in range(count)])
+
+
+COLLECTION_DOESNT_EXIST_MESSAGE = """
+So. Here's the thing. You're asking me to create items, but it appears that the
+encrypted collection doesn't exist yet. That's not so great. What will happen
+is that the secret stuff will be inserted without encryption, so I'm not going
+to do this. You should create the encrypted collection with server-side schema
+enforcement and the right permissions so this doesn't happen.
+"""
+
+
+def create_some_items():
+    if not does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION):
+        print(COLLECTION_DOESNT_EXIST_MESSAGE)
+        return
+    global mongo_client
+    ITEMS_TO_CREATE = 200
+    print(f"Creating {ITEMS_TO_CREATE} random items...")
+    created_items_dicts = []
+    for i in range(ITEMS_TO_CREATE):
+        item_name = generate_nonsense_word()
+        item_to_create = {
+            "name": item_name,
+            "description": generate_nonsense_words(20),
+            "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX),
+            "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX)
+        }
+        created_items_dicts.append(item_to_create)
+    mongo_client[DB_NAME].get_collection(ENCRYPTED_ITEMS_COLLECTION).insert_many(created_items_dicts)
+    print("Items created.")
+    print()
+
+
+
+
+
 def help():
     print("Available commands:")
     print("  status                      -  show general status about the experiment")
-    print("  create-encrypted-collection - creates a collection with automatic encryption")
+    print("  create-encrypted-collection -  creates a collection with automatic encryption")
+    print("  create-some-items           -  creates a handful of random items")
     print("  destroy-database            -  destroys the database")
     print("  exit / quit                 -  exits the program")
     print()
@@ -205,6 +258,8 @@ while True:
             status()
         elif command == "create-encrypted-collection":
             create_encrypted_collection()
+        elif command == "create-some-items":
+            create_some_items()
         elif command == "destroy-database":
             destroy_database()
         else:
@@ -230,37 +285,6 @@ while True:
 
 
 
-# def generate_nonsense_word():
-#     VOWELS = "aeiou"
-#     CONSONANTS = "bcdfghjklmnpqrstvwxyz"
-#     WORD_LENGTH = random.randint(4, 8)
-#     word = ""
-#     for i in range(WORD_LENGTH):
-#         if i % 2 == 0:
-#             # Even indices get a consonant
-#             word += random.choice(CONSONANTS)
-#         else:
-#             # Odd indices get a vowel
-#             word += random.choice(VOWELS)
-#     return word
-
-# def generate_nonsense_words(count):
-#     return ' '.join([generate_nonsense_word() for i in range(count)])
-
-# def create_some_items(count):
-#     global db
-#     created_items_dicts = []
-#     for i in range(count):
-#         item_name = generate_nonsense_word()
-#         item_to_create = {
-#             "name": item_name,
-#             "description": generate_nonsense_words(20),
-#             "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX),
-#             "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX)
-#         }
-#         created_items_dicts.append(item_to_create)
-#     # (creates db and collection, if they don't exist)
-#     db.items.insert_many(created_items_dicts)
 
 # while True:  # not with a bang, but with a loop
 #     ITEMS_TO_ADD = 100
