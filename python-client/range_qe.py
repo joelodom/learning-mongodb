@@ -2,6 +2,7 @@
 Experimenting with QE range queries. What I've tested:
 
   - $gt, $lt, $gte, $lte on int and long (though the test is kind of absurd)
+  - long with low cardinality
 """
 
 import os
@@ -78,7 +79,7 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 0 # zero will be the default
+                "trimFactor": 6 # six will be the default
                 #"sparsity": 2,
                 #"min": SECRET_INT_MIN,
                 #"max": SECRET_INT_MAX
@@ -90,7 +91,7 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 0 # zero will be the default
+                "trimFactor": 6 # six will be the default
                 #"sparsity": 2,
                 #"min": SECRET_INT_MIN,
                 #"max": SECRET_INT_MAX
