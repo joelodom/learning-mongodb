@@ -121,7 +121,6 @@ ENCRYPTED_ITEMS_COLLECTION = "items"
 def create_encrypted_collection():
     if does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION):
         print("It appears that the encrypted collection already exists. Doing nothing.")
-        print()
         return
     client_encryption = ClientEncryption(  # a kind of helper
         kms_providers=KMS_PROVIDER_CREDENTIALS,
@@ -141,7 +140,6 @@ def create_encrypted_collection():
         print("Encrypted collection created.")
     else:
         print("It appears that something went wrong...")
-    print()
 
 
 
@@ -185,10 +183,10 @@ enforcement and the right permissions so this doesn't happen.
 
 
 def create_some_items():
+    global mongo_client
     if not does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION):
         print(COLLECTION_DOESNT_EXIST_MESSAGE)
         return
-    global mongo_client
     ITEMS_TO_CREATE = 200
     print(f"Creating {ITEMS_TO_CREATE} random items...")
     created_items_dicts = []
@@ -203,7 +201,6 @@ def create_some_items():
         created_items_dicts.append(item_to_create)
     mongo_client[DB_NAME].get_collection(ENCRYPTED_ITEMS_COLLECTION).insert_many(created_items_dicts)
     print("Items created.")
-    print()
 
 
 
@@ -214,6 +211,7 @@ def help():
     print("  status                      -  show general status about the experiment")
     print("  create-encrypted-collection -  creates a collection with automatic encryption")
     print("  create-some-items           -  creates a handful of random items")
+    print("  test-query                  -  test querying the database")    
     print("  destroy-database            -  destroys the database")
     print("  exit / quit                 -  exits the program")
     print()
@@ -225,7 +223,6 @@ def status():
     print(f"ENCRYPTED_ITEMS_COLLECTION is {ENCRYPTED_ITEMS_COLLECTION}.")
     exists = does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION)
     print(f"{ENCRYPTED_ITEMS_COLLECTION} {'is' if exists else 'is not'} created.")
-    print()
 
 
 def destroy_database():
@@ -235,10 +232,32 @@ def destroy_database():
         mongo_client.drop_database(DB_NAME)
     else:
         print("You didn't say please. Database not destroyed.")
-    print()
 
 
-while True:
+def test_query():
+    global mongo_client
+    QUERY = {
+        "secret_int": {
+            "$gt": int(SECRET_INT_MAX * 0.9),
+            "$lt": int(SECRET_INT_MAX * 0.95),
+            "$gte": int(SECRET_INT_MAX * 0.9),
+            "$lte": int(SECRET_INT_MAX * 0.95),
+        },
+        "secret_long": {
+            "$gte": (SECRET_LONG_MIN),
+            "$lte": (SECRET_LONG_MIN),
+        }
+    }
+    start_time = time.time()
+    results = mongo_client[DB_NAME][ENCRYPTED_ITEMS_COLLECTION].find(QUERY)
+    print(f"find took {1000*(time.time() - start_time):.1f} ms")
+    count = 0
+    for result in results:
+        count += 1
+    print(f"Iterated over {count} results.")
+
+
+while True:  # not with a bang, but with a loop
     try:
         user_input = input(">>> ").strip()
         
@@ -247,6 +266,8 @@ while True:
         
         command, *args = user_input.split()
         command = command.lower()
+
+        start_time = time.time()
 
         if command in ["exit", "quit"]:
             print("Goodbye!")
@@ -260,63 +281,18 @@ while True:
             create_encrypted_collection()
         elif command == "create-some-items":
             create_some_items()
+        elif command == "test-query":
+            test_query()
         elif command == "destroy-database":
             destroy_database()
         else:
             print(f"Unknown command: {command}. Type 'help' for a list of commands.")
+
+        elapsed_time = 1000*(time.time() - start_time)
+
+        print(f"Elapsed time: {elapsed_time:.1f} ms")
+        print()
+
     except Exception as e:
         traceback.print_exc()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# while True:  # not with a bang, but with a loop
-#     ITEMS_TO_ADD = 100
-#     create_some_items(ITEMS_TO_ADD)
-
-#     #
-#     # Query
-#     #
-
-#     QUERY = {
-#         "secret_int": {
-#             "$gt": int(SECRET_INT_MAX * 0.9),
-#             "$lt": int(SECRET_INT_MAX * 0.95),
-#             "$gte": int(SECRET_INT_MAX * 0.9),
-#             "$lte": int(SECRET_INT_MAX * 0.95),
-#         },
-#         "secret_long": {
-#             "$gte": (SECRET_LONG_MIN),
-#             "$lte": (SECRET_LONG_MIN),
-#         }
-#     }
-
-#     start_time = time.time()
-    
-#     results = db.items.find(QUERY)
-
-#     count = 0
-#     for result in results:
-#         count += 1
-#         #pprint(result)
-
-#     end_time = time.time()
-
-#     print(f"{count} of {db.items.count_documents({})} items match")
-#     print(f"Execution time: {end_time - start_time:.4f} seconds")
