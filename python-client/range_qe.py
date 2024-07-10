@@ -9,12 +9,13 @@ import os
 from pprint import pprint
 import random
 import time
-from bson import STANDARD, CodecOptions
+from bson import STANDARD, CodecOptions, Decimal128
 from pymongo.encryption import ClientEncryption
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
 import traceback
 import readline # allows input to use up and down arrows
+from decimal import Decimal, Context, Inexact
 
 
 print("Welcome to the QE Range sandbox. Type 'help' for a list of commands. Type 'exit' to quit.")
@@ -27,7 +28,7 @@ print("Welcome to the QE Range sandbox. Type 'help' for a list of commands. Type
 
 print("Setting up the AutoEncryptionOpts helper class...")
 
-KMS_PROVIDER_NAME = "local"  # instead of a cloud provider
+KMS_PROVIDER_NAME = "local"  # instead of a KMS
 KEY_VAULT_NAMESPACE = "encryption.__keyVault"
 
 # 96 random hardcoded bytes, because it's only an example
@@ -80,13 +81,11 @@ SECRET_INT_MAX = 100000
 SECRET_LONG_MIN = 474836472147483647
 SECRET_LONG_MAX = 474836472147483649
 
+SECRET_DECIMAL_MIN = 2.718281828459045
+SECRET_DECIMAL_MAX = 3.141592653589793
+
 ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
     "fields": [
-        # {
-        #     "path": "name",
-        #     "bsonType": "string",
-        #     "queries": [ {"queryType": "equality"} ]  # equality queryable
-        # },
         {
             "path": "secret_int",
             "bsonType": "int",
@@ -94,9 +93,6 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             [ {
                 "queryType": "range",
                 "trimFactor": 6 # six will be the default
-                #"sparsity": 2,
-                #"min": SECRET_INT_MIN,
-                #"max": SECRET_INT_MAX
             } ]  # range queryable
         },
         {
@@ -106,9 +102,15 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             [ {
                 "queryType": "range",
                 "trimFactor": 6 # six will be the default
-                #"sparsity": 2,
-                #"min": SECRET_INT_MIN,
-                #"max": SECRET_INT_MAX
+            } ]  # range queryable
+        },
+        {
+            "path": "secret_decimal",
+            "bsonType": "decimal",  # decimal128
+            "queries":
+            [ {
+                "queryType": "range",
+                "trimFactor": 6 # six will be the default
             } ]  # range queryable
         }
     ]
@@ -184,6 +186,7 @@ enforcement and the right permissions so this doesn't happen.
 
 def create_some_items():
     global mongo_client
+
     if not does_collection_exist(DB_NAME, ENCRYPTED_ITEMS_COLLECTION):
         print(COLLECTION_DOESNT_EXIST_MESSAGE)
         return
@@ -196,7 +199,9 @@ def create_some_items():
             "name": item_name,
             "description": generate_nonsense_words(20),
             "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX),
-            "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX)
+            "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX),
+            "secret_decimal": Decimal128(str(random.uniform(
+                SECRET_DECIMAL_MIN, SECRET_DECIMAL_MAX)))  # not really right
         }
         created_items_dicts.append(item_to_create)
     mongo_client[DB_NAME].get_collection(ENCRYPTED_ITEMS_COLLECTION).insert_many(created_items_dicts)
@@ -226,7 +231,7 @@ def status():
 
 
 def destroy_database():
-    confirm = input("If you really mean in, say please: ")
+    confirm = input("If you really mean it, say please: ")
     if confirm == "please":
         print("Destroying database...")
         mongo_client.drop_database(DB_NAME)
