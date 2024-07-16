@@ -3,6 +3,11 @@ This is a toy program to experiment with MongoDB Queryable Encryption Range
 Queries, to be released in Server 8.0 as GA.
 
 Author: Joel Odom
+
+
+IMPORTANT TODO: This example code assumes the pre-existance of the key vault
+coded below -- and the example should be updated to include the creation and
+destruction of the key vault.
 """
 
 import os
@@ -31,9 +36,10 @@ print("Setting up the AutoEncryptionOpts helper class...")
 KMS_PROVIDER_NAME = "local"  # instead of a KMS
 KEY_VAULT_NAMESPACE = "encryption.__keyVault"
 
-# 96 random hardcoded bytes, because it's only an example
-# Production implementations should use a Key-Management System
-LOCAL_MASTER_KEY = b";1\x0f\x06%\x97\x99\xa5\xaen\xb4\x8b<T3v\x0b\\\xeb\x9f\x13\xa8\xb9\xc0[\xa0\xc3\xb9\xa7\x0e|\x8e3o5\x1a\xd8\x08H\x0b \xf1\xc1Eb\xeb\x0b\x8e\xde\xe4Oz\xe3\x0bs%$R\x13?\x9aI\x1d\xd0'\xee\xd8\x06\x85\x16\x90\xb0\x9ec#\x9c=Y\x8f\xc5\xc211\xc5\x15\x07\xae\xd2\xc6\xdb\xc5\x9c^S\xae,"
+# 96 random hardcoded bytes (encoded), because it's only an example
+# *** Production implementations should use a Key Management System or be
+# thoughtful about how local keys are provided / managed. ***
+LOCAL_MASTER_KEY = "V2hlbiB0aGUgY2F0J3MgYXdheSwgdGhlIG1pY2Ugd2lsbCBwbGF5LCBidXQgd2hlbiB0aGUgZG9nIGlzIGFyb3VuZCwgdGhlIGNhdCBiZWNvbWVzIGEgbmluamEuLi4u"
 
 KMS_PROVIDER_CREDENTIALS = {
     "local": {
@@ -76,14 +82,14 @@ mongo_client = MongoClient(URI, auto_encryption_opts=auto_encryption_options)
 # Here is where we define the experimental schema
 #
 
-SECRET_INT_MIN = -100000
-SECRET_INT_MAX = 100000
+SECRET_INT_MIN = 1
+SECRET_INT_MAX = 1000
 
 SECRET_LONG_MIN = 474836472147483647
 SECRET_LONG_MAX = 474836472147483649
 
-SECRET_DECIMAL_MIN = 2.718281828459045
-SECRET_DECIMAL_MAX = 3.141592653589793
+SECRET_DECIMAL_MIN = 3.00000000
+SECRET_DECIMAL_MAX = 3.14159265
 
 ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
     "fields": [
@@ -93,7 +99,9 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 6 # six will be the default
+                "trimFactor": 6, # six will be the default
+                "min": SECRET_INT_MIN,
+                "max": SECRET_INT_MAX
             } ]  # range queryable
         },
         {
@@ -102,7 +110,7 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 6 # six will be the default
+                "trimFactor": 6, # six will be the default
             } ]  # range queryable
         },
         {
@@ -111,7 +119,10 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 6 # six will be the default
+                "trimFactor": 6, # six will be the default
+                "min": Decimal128(str(SECRET_DECIMAL_MIN)),
+                "max": Decimal128(str(SECRET_DECIMAL_MAX)),
+                "precision": 10
             } ]  # range queryable
         }
     ]
@@ -251,7 +262,7 @@ def test_query():
         },
         "secret_long": {
             "$gte": (SECRET_LONG_MIN),
-            "$lte": (SECRET_LONG_MIN),
+            "$lte": (SECRET_LONG_MAX),
         }
     }
     PROJECTION = { "__safeContent__": 0, "_id": 0 }
