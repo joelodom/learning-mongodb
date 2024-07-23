@@ -3,18 +3,13 @@ This is a toy program to experiment with MongoDB Queryable Encryption Range
 Queries, to be released in Server 8.0 as GA.
 
 Author: Joel Odom
-
-
-IMPORTANT TODO: This example code assumes the pre-existance of the key vault
-coded below -- and the example should be updated to include the creation and
-destruction of the key vault.
 """
 
 import os
 from pprint import pprint
 import random
 import time
-from bson import STANDARD, CodecOptions, Decimal128
+from bson import STANDARD, CodecOptions, Decimal128, Int64
 from pymongo.encryption import ClientEncryption
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
@@ -28,17 +23,24 @@ print("Welcome to the QE Range sandbox. Type 'help' for a list of commands. Type
 
 
 #
-# AutoEncryptionOpts helper class setup
+# AutoEncryptionOpts is a helper class that we pass to the MongoClient. It
+# provides the KMS credentials and the namespace (database and collection)
+# for the keys. Note that all of the keys in the key vault are encrypted
+# on the client side, so the server can't access the keys or the data encrypted
+# by them.
 #
 
 print("Setting up the AutoEncryptionOpts helper class...")
 
 KMS_PROVIDER_NAME = "local"  # instead of a KMS
-KEY_VAULT_NAMESPACE = "encryption.__keyVault"
+KEY_VAULT_DATABASE = "encryption"
+KEY_VAULT_COLLECTION = "__keyVault"
+KEY_VAULT_NAMESPACE = f"{KEY_VAULT_DATABASE}.{KEY_VAULT_COLLECTION}"
 
-# 96 random hardcoded bytes (encoded), because it's only an example
-# *** Production implementations should use a Key Management System or be
-# thoughtful about how local keys are provided / managed. ***
+# We use 96 random hardcoded bytes (base64-encoded), because this is only an
+# example. Production implementations of QE should use a Key Management System
+# or be very thoughtful about how the secret key is secured and injected into
+# the client at runtime.
 LOCAL_MASTER_KEY = "V2hlbiB0aGUgY2F0J3MgYXdheSwgdGhlIG1pY2Ugd2lsbCBwbGF5LCBidXQgd2hlbiB0aGUgZG9nIGlzIGFyb3VuZCwgdGhlIGNhdCBiZWNvbWVzIGEgbmluamEuLi4u"
 
 KMS_PROVIDER_CREDENTIALS = {
@@ -47,9 +49,10 @@ KMS_PROVIDER_CREDENTIALS = {
     },
 }
 
+# ref https://www.mongodb.com/docs/manual/core/queryable-encryption/reference/shared-library/
 CRYPT_SHARED_LIB = "/Users/joel.odom/mongo_crypt_shared_v1-macos-arm64-enterprise-8.0.0-rc9/lib/mongo_crypt_v1.dylib"
 
-auto_encryption_options = AutoEncryptionOpts(  # use automatic encryption
+auto_encryption_options = AutoEncryptionOpts(
     KMS_PROVIDER_CREDENTIALS,
     KEY_VAULT_NAMESPACE,
     crypt_shared_lib_path=CRYPT_SHARED_LIB
@@ -58,7 +61,7 @@ auto_encryption_options = AutoEncryptionOpts(  # use automatic encryption
 
 
 #
-# Connect to the database
+# Connect to MongoDB using the usual MongoClient paradigms.
 #
 
 print("Creating the MongoClient using the connection string in the source code...")
@@ -79,14 +82,16 @@ mongo_client = MongoClient(URI, auto_encryption_opts=auto_encryption_options)
 
 
 #
-# Here is where we define the experimental schema
+# Here is where we define the experimental schema. This is pushed to the server.
+# It's also possible to use a client-side schema for enforcement on the client
+# side.
 #
 
 SECRET_INT_MIN = 1
 SECRET_INT_MAX = 1000
 
-SECRET_LONG_MIN = 474836472147483647
-SECRET_LONG_MAX = 474836472147483649
+SECRET_LONG_MIN = 474836472147483600
+SECRET_LONG_MAX = 474836472147483700
 
 SECRET_DECIMAL_MIN = 3.00000000
 SECRET_DECIMAL_MAX = 3.14159265
@@ -229,7 +234,7 @@ def help():
     print("  create-encrypted-collection -  creates a collection with automatic encryption")
     print("  create-some-items           -  creates a handful of random items")
     print("  test-query                  -  test querying the database")    
-    print("  destroy-database            -  destroys the database")
+    print("  destroy-databases           -  destroys the databasees (including the key vault)")
     print("  exit / quit                 -  exits the program")
     print()
 
@@ -242,29 +247,30 @@ def status():
     print(f"{ENCRYPTED_ITEMS_COLLECTION} {'is' if exists else 'is not'} created.")
 
 
-def destroy_database():
+def destroy_databases():
     confirm = input("If you really mean it, say please: ")
     if confirm == "please":
-        print("Destroying database...")
+        print("Destroying databases...")
         mongo_client.drop_database(DB_NAME)
+        mongo_client.drop_database(KEY_VAULT_DATABASE)
     else:
-        print("You didn't say please. Database not destroyed.")
+        print("You didn't say please. Databases not destroyed.")
 
+
+QUERY = {
+    "secret_int": {
+        "$gt": (SECRET_INT_MAX + SECRET_INT_MIN)//2
+    },
+    "secret_long": {
+        "$gte": Int64((SECRET_LONG_MAX + SECRET_LONG_MIN)//2)
+    },
+    "secret_decimal": {
+        "$lt": Decimal128(str((SECRET_DECIMAL_MAX + SECRET_DECIMAL_MIN)/2))
+    }
+}
 
 def test_query():
     global mongo_client
-    QUERY = {
-        "secret_int": {
-            "$gt": int(SECRET_INT_MAX * 0.9),
-            "$lt": int(SECRET_INT_MAX * 0.95),
-            "$gte": int(SECRET_INT_MAX * 0.9),
-            "$lte": int(SECRET_INT_MAX * 0.95),
-        },
-        "secret_long": {
-            "$gte": (SECRET_LONG_MIN),
-            "$lte": (SECRET_LONG_MAX),
-        }
-    }
     PROJECTION = { "__safeContent__": 0, "_id": 0 }
     start_time = time.time()
     results = mongo_client[DB_NAME][ENCRYPTED_ITEMS_COLLECTION].find(QUERY, PROJECTION)
@@ -308,8 +314,8 @@ while True:  # not with a bang, but with a loop
             create_some_items()
         elif command == "test-query":
             test_query()
-        elif command == "destroy-database":
-            destroy_database()
+        elif command == "destroy-databases":
+            destroy_databases()
         else:
             print(f"Unknown command: {command}. Type 'help' for a list of commands.")
 
