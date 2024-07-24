@@ -13,8 +13,8 @@ Here are some steps to demonstrate how CSFLE works (and how lookup should work):
   5. Create the database with encryption
   6. You can list all the prefix codes
   7. If you try to list the codes without specifying encryption you see gibberish
-  8. You can't do a lookup, even though the field isn't even used for the lookup
-  9. If you turn off encryption, you can do the lookup because the field isn't used for the lookup
+  8. You can't do a lookup (--encryption), even though the field isn't even used for the lookup
+  9. If you turn off encryption (omit --encryption), you can do the lookup because the field isn't used for the lookup
 
 I also added the ability to lookup starships associated with a mission, which
 is the reverse direction (the collection with encryption is the foreign one) in
@@ -24,7 +24,8 @@ flag it won't work because a collection with automatic encryption tied to it
 can't be used in a lookup.
 
 Also notice that you can list episodes and writers, which fails when using an
-encrypting client even though neither of the collections has encrypted fields.
+encrypting client (that is, turning on --encryption) even though neither of the
+collections has encrypted fields. This is being tracked as a bug.
 """
 
 import argparse
@@ -36,8 +37,7 @@ from pymongo.encryption_options import AutoEncryptionOpts
 
 
 #
-# These are global constants that you may have to tweak to use this program
-# on your own database.
+# Constants, including the database connection strings and the sample data.
 #
 
 PASSWORD = os.getenv("JOEL_ATLAS_PWD")
@@ -72,16 +72,19 @@ WRITERS_DATA = [  # nothing encrypted
 ]
 
 EPISODES_DATA = [  # nothing encrypted
-    {"episode_number": 28, "title": "The City on the Edge of Forever", "writer": 1},
-    {"episode_number": 44, "title": "The Trouble with Tribbles", "writer": 1}
+    {"episode_number": 28, "title": "The City on the Edge of Forever"},
+    {"episode_number": 44, "title": "The Trouble with Tribbles"}
 ]
 
-KEY_VAULT_DB = DB_NAME  # Reuse the same database
+KEY_VAULT_DB = DB_NAME  # Reuse the same database for the key vault
 KEY_VAULT_COLL = "__keyVault"
 KEY_VAULT_NAMESPACE = f"{KEY_VAULT_DB}.{KEY_VAULT_COLL}"
 
-# 96 random hardcoded key bytes, because it's only an example
-LOCAL_MASTER_KEY = b";1\x0f\x06%\x97\x99\xa5\xaen\xb4\x8b<T3v\x0b\\\xeb\x9f\x13\xa8\xb9\xc0[\xa0\xc3\xb9\xa7\x0e|\x8e3o5\x1a\xd8\x08H\x0b \xf1\xc1Eb\xeb\x0b\x8e\xde\xe4Oz\xe3\x0bs%$R\x13?\x9aI\x1d\xd0'\xee\xd8\x06\x85\x16\x90\xb0\x9ec#\x9c=Y\x8f\xc5\xc211\xc5\x15\x07\xae\xd2\xc6\xdb\xc5\x9c^S\xae,"
+# We use 96 random hardcoded bytes (base64-encoded), because this is only an
+# example. Production implementations of QE should use a Key Management System
+# or be very thoughtful about how the secret key is secured and injected into
+# the client at runtime.
+LOCAL_MASTER_KEY = "V2hlbiB0aGUgY2F0J3MgYXdheSwgdGhlIG1pY2Ugd2lsbCBwbGF5LCBidXQgd2hlbiB0aGUgZG9nIGlzIGFyb3VuZCwgdGhlIGNhdCBiZWNvbWVzIGEgbmluamEuLi4u"
 
 # The ClientEncryption helper object needs a key provider
 KMS_PROVIDERS = {
