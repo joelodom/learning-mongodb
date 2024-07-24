@@ -61,7 +61,7 @@ employee_schema = {
             "salary": {
                 "encrypt": {
                     "bsonType": "int",
-                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
                     "keyId": [data_key_id]
                 }
             },
@@ -71,7 +71,7 @@ employee_schema = {
                     "code": {
                         "encrypt": {
                             "bsonType": "int",
-                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
                             "keyId": [data_key_id]
                         }
                     }
@@ -88,7 +88,7 @@ department_schema = {
             "budget": {
                 "encrypt": {
                     "bsonType": "int",
-                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                    "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
                     "keyId": [data_key_id]
                 }
             },
@@ -98,7 +98,7 @@ department_schema = {
                     "code": {
                         "encrypt": {
                             "bsonType": "int",
-                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Random",
+                            "algorithm": "AEAD_AES_256_CBC_HMAC_SHA_512-Deterministic",
                             "keyId": [data_key_id]
                         }
                     }
