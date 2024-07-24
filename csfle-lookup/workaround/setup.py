@@ -54,8 +54,7 @@ department_docs = [
     {"department_id": 2, "name": "Science", "budget": 130000, "secret_code": { "code": 54321}}
 ]
 
-schema_map = {
-    f"{DB_NAME}.employees": {
+employees_schema = {
         "bsonType": "object",
         "properties": {
             "salary": {
@@ -78,8 +77,9 @@ schema_map = {
                 }
             }
         }
-    },
-    f"{DB_NAME}.departments": {
+    }
+
+departments_schema = {
         "bsonType": "object",
         "properties": {
             "budget": {
@@ -103,9 +103,17 @@ schema_map = {
             }
         }
     }
-}
 
-# Instantiate connections for each of the collections
+#
+# Here we create the encrypted collections with server-side schema enforcement
+# and we insert the documents. Note that if we try to insert without automatic
+# encryption, we'll get a "value was not encrypted" error.
+#
+
+schema_map = {
+    f"{DB_NAME}.employees": employees_schema,
+    f"{DB_NAME}.departments": departments_schema
+}
 
 auto_encryption_opts=AutoEncryptionOpts(
     KMS_PROVIDERS,
@@ -116,7 +124,16 @@ auto_encryption_opts=AutoEncryptionOpts(
 client = MongoClient(
     MONGO_URI, auto_encryption_opts=auto_encryption_opts)
 
-# Insert documents into the collections
+client[DB_NAME].command({
+    "create": "employees",
+    "validator": { "$jsonSchema": employees_schema }
+})
+
+client[DB_NAME].command({
+    "create": "departments",
+    "validator": { "$jsonSchema": departments_schema }
+})
+
 client[DB_NAME].employees.insert_many(employee_docs)
 client[DB_NAME].departments.insert_many(department_docs)
 
