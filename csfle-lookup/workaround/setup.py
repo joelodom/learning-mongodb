@@ -54,7 +54,7 @@ department_docs = [
     {"department_id": 2, "name": "Science", "budget": 130000, "secret_code": { "code": 54321}}
 ]
 
-employee_schema = {
+schema_map = {
     f"{DB_NAME}.employees": {
         "bsonType": "object",
         "properties": {
@@ -78,10 +78,7 @@ employee_schema = {
                 }
             }
         }
-    }
-}
-
-department_schema = {
+    },
     f"{DB_NAME}.departments": {
         "bsonType": "object",
         "properties": {
@@ -110,26 +107,17 @@ department_schema = {
 
 # Instantiate connections for each of the collections
 
-employee_auto_encryption_opts=AutoEncryptionOpts(
+auto_encryption_opts=AutoEncryptionOpts(
     KMS_PROVIDERS,
     KEY_VAULT_NAMESPACE,
-    schema_map=employee_schema
+    schema_map=schema_map
 )
 
-employee_client = MongoClient(
-    MONGO_URI, auto_encryption_opts=employee_auto_encryption_opts)
-
-department_auto_encryption_opts=AutoEncryptionOpts(
-    KMS_PROVIDERS,
-    KEY_VAULT_NAMESPACE,
-    schema_map=department_schema
-)
-
-department_client = MongoClient(
-    MONGO_URI, auto_encryption_opts=department_auto_encryption_opts)
+client = MongoClient(
+    MONGO_URI, auto_encryption_opts=auto_encryption_opts)
 
 # Insert documents into the collections
-employee_client[DB_NAME].employees.insert_many(employee_docs)
-department_client[DB_NAME].departments.insert_many(department_docs)
+client[DB_NAME].employees.insert_many(employee_docs)
+client[DB_NAME].departments.insert_many(department_docs)
 
 print("Sample documents have been inserted into employees and departments collections.")

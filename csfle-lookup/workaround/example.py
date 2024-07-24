@@ -53,7 +53,7 @@ KMS_PROVIDERS = {
 employee_auto_encryption_opts=AutoEncryptionOpts(
     KMS_PROVIDERS,
     KEY_VAULT_NAMESPACE,
-    bypass_auto_encryption=False  # secret sauce
+    bypass_auto_encryption=True  # secret sauce
     )
 
 client = MongoClient(
@@ -65,35 +65,35 @@ pipeline = [
     { "$match": { "name": "Spock" } },
     # { "$match": { "salary": "50000" } },
 
-    # {
-    #     "$lookup": {
-    #         "from": "departments",
-    #         "localField": "department_id",
-    #         "foreignField": "department_id",
-    #         "as": "department_info"
-    #     },
-    # },
-    # {
-    #     "$set": {
-    #     "department_info": { "$first": "$department_info" }
-    #     }
-    # },
-    # {
-    #     "$set": {
-    #         "secret_code": {
-    #         "$mergeObjects": [
-    #             "$$ROOT.secret_code",
-    #             "$department_info.secret_code"
-    #             ]
-    #         }
-    #     }
-    # },
-    # {
-    #     "$project": {
-    #         "_id": 0,
-    #         "department_info._id": 0
-    #     }
-    # }
+    {
+        "$lookup": {
+            "from": "departments",
+            "localField": "department_id",
+            "foreignField": "department_id",
+            "as": "department_info"
+        },
+    },
+    {
+        "$set": {
+        "department_info": { "$first": "$department_info" }
+        }
+    },
+    {
+        "$set": {
+            "secret_code": {
+            "$mergeObjects": [
+                "$$ROOT.secret_code",
+                "$department_info.secret_code"
+                ]
+            }
+        }
+    },
+    {
+        "$project": {
+            "_id": 0,
+            "department_info._id": 0
+        }
+    }
 ]
 
 results = db.employees.aggregate(pipeline)
