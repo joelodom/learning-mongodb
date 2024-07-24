@@ -40,6 +40,7 @@ client_encryption = ClientEncryption(
 # Create a new data encryption key, which will appear in the database
 # after this statement.
 data_key_id = client_encryption.create_data_key("local")
+#print(f"Data Key ID: {data_key_id}")
 
 # Sample documents and encryption schemas
 
