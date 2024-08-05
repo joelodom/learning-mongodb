@@ -129,7 +129,12 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
                 "max": Decimal128(str(SECRET_DECIMAL_MAX)),
                 "precision": 10
             } ]  # range queryable
-        }
+        },
+        # {
+        #     "path": "arrayField.arrayObjectField1",
+        #     "bsonType": "string",
+        #     "queries": { "queryType": "equality" },
+        # },
     ]
 }
 
@@ -218,7 +223,8 @@ def create_some_items():
             "secret_int": random.randint(SECRET_INT_MIN, SECRET_INT_MAX),
             "secret_long": random.randint(SECRET_LONG_MIN, SECRET_LONG_MAX),
             "secret_decimal": Decimal128(str(random.uniform(
-                SECRET_DECIMAL_MIN, SECRET_DECIMAL_MAX)))  # not really right
+                SECRET_DECIMAL_MIN, SECRET_DECIMAL_MAX))),  # not really right
+            "arrayField": [ { "arrayObjectField1": "foo" } ]
         }
         created_items_dicts.append(item_to_create)
     mongo_client[DB_NAME].get_collection(ENCRYPTED_ITEMS_COLLECTION).insert_many(created_items_dicts)
