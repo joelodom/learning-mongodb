@@ -77,13 +77,19 @@ client_encryption = ClientEncryption(
 
 customer_master_key_credentials = {} # no creds because using a local key CMK
 
-# client_encryption.create_encrypted_collection(
-#     encrypted_client[encrypted_database_name],
-#     encrypted_collection_name,
-#     encrypted_fields_map,
-#     kms_provider_name,
-#     customer_master_key_credentials,
-# )
+#
+# NOTE! This will fail the second time it runs because the collection is already
+# created. Comment this out to run multiple times. This is not the right way
+# to do it in production -- this is just an experiment.
+#
+
+client_encryption.create_encrypted_collection(
+    encrypted_client[encrypted_database_name],
+    encrypted_collection_name,
+    encrypted_fields_map,
+    kms_provider_name,
+    customer_master_key_credentials,
+)
 
 SECRET_SSN = f"{random.randint(0, 999999999):09d}"
 
