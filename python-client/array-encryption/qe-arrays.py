@@ -104,8 +104,8 @@ patient_document = {
         },
     },
     "medications": [
-        "Tylenol",
-        "Asprin"
+        { "expired": False, "name": "Tylenol" },
+        { "expired": True, "name": "Asprin" }
     ]
 }
 
