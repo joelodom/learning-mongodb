@@ -1,2 +1,2 @@
 # learning-mongodb
-Joel's Repo to Learn MongoDB
+Joel's Repo of MongoDB experiments, personal learning, etc.

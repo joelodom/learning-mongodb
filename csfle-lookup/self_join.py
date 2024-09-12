@@ -145,7 +145,7 @@ pipeline = [
     # an array of all of the documents that match. If I comment out the pipeline
     # then the only difference is that every document in the pipeline has a
     # filled-out manager_info array. So I think the way this works is that the
-    # $lookup always adds a new sub-collection to the document that is the
+    # $lookup always adds a new sub-document to the document that is the
     # join for all matches, and the sub-pipeline can be used to manage details
     # about the sub-collections that are added in the lookup.
 
