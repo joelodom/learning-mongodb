@@ -7,8 +7,10 @@ Author: Joel Odom
 TODO:
 
   * Upgrade to the lastest driver and shared library.
+  * Inspect to make sure that the inserted items are actually encrypted as expected.
 """
 
+import time
 from bson import STANDARD, CodecOptions
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
@@ -101,7 +103,7 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "equality",
-            } ]  # range queryable
+            } ]  # equality queryable
         }
     ]
 }
@@ -123,6 +125,55 @@ client_encryption.create_encrypted_collection(
 )
 
 assert(does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
+
+#
+# Insert a bunch of random data including an encrypted string
+#
+
+ITERATIONS = 200
+ITEMS_TO_CREATE = 200
+
+for x in range(ITERATIONS):
+    print(f"Creating {ITEMS_TO_CREATE} random items... Iteration {x + 1} of {ITERATIONS}...")
+
+    created_items_dicts = []
+
+    for i in range(ITEMS_TO_CREATE):
+        item_name = f"Item {i}"
+        item_to_create = {
+            "name": item_name,
+            "description": f"This is item{i}.",
+            "encrypted_string": f"{i}"
+        }
+        created_items_dicts.append(item_to_create)
+
+    start_time = time.time()
+    mongo_client[DB_NAME].get_collection(ENCRYPTED_COLLECTION).insert_many(created_items_dicts)
+    end_time = time.time()
+
+    print(f"Items created. Elapsed time is {end_time - start_time} ms.")
+
+#
+# RESULT: About 1.1 ms per iteration with no noticable increase in time as the
+# collection grows.
+#
+
+#
+# Check the size of the collection on disk
+#
+
+
+
+
+
+
+
+
+#
+# Perform a query
+#
+
+
 
 
 
