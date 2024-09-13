@@ -10,6 +10,7 @@ TODO:
   * Inspect to make sure that the inserted items are actually encrypted as expected.
 """
 
+import socket
 import time
 from bson import STANDARD, CodecOptions
 from pymongo import MongoClient
@@ -92,6 +93,16 @@ assert(not does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
 
 
 #
+# Interlude: a signaling system so another client can be the database reader
+#
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def send_signal(signal_str, host="localhost", port=3141):
+    global sock
+    sock.sendto(signal_str.encode("utf-8"), (host, port))
+
+
+#
 # Create the encrypted collection and key vault
 #
 
@@ -130,7 +141,7 @@ assert(does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
 # Insert a bunch of random data including an encrypted string
 #
 
-ITERATIONS = 200
+ITERATIONS = 10
 ITEMS_TO_CREATE = 200
 
 for x in range(ITERATIONS):
@@ -148,14 +159,17 @@ for x in range(ITERATIONS):
         created_items_dicts.append(item_to_create)
 
     start_time = time.time()
+    send_signal("start-insert")
     mongo_client[DB_NAME].get_collection(ENCRYPTED_COLLECTION).insert_many(created_items_dicts)
+    send_signal("end-insert")
     end_time = time.time()
 
     print(f"Items created. Elapsed time is {end_time - start_time} ms.")
 
 #
 # RESULT: About 1.1 ms per iteration with no noticable increase in time as the
-# collection grows.
+# collection grows. HOWEVER, if I change the string to be unencrypted, we're
+# talking 0.005 ms...
 #
 
 #
@@ -188,3 +202,4 @@ mongo_client.drop_database(KEY_VAULT_DATABASE)
 assert(not does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
 
 mongo_client.close()
+sock.close()
