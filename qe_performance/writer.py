@@ -11,11 +11,10 @@ TODO:
   * Test against Atlas since this has no network latency between any parts of the system.
 """
 
-import csv
 import time
 from bson import STANDARD, CodecOptions
 from pymongo.encryption import ClientEncryption
-from qe_performance.utils import create_client, DB_NAME, KMS_PROVIDER_CREDENTIALS, KEY_VAULT_NAMESPACE, KMS_PROVIDER_NAME, KEY_VAULT_DATABASE, ENCRYPTED_COLLECTION, write_line_to_csv
+from utils import create_client, DB_NAME, KMS_PROVIDER_CREDENTIALS, KEY_VAULT_NAMESPACE, KMS_PROVIDER_NAME, KEY_VAULT_DATABASE, ENCRYPTED_COLLECTION, write_line_to_csv
 
 print("Welcome to the QE performance experiment writer.")
 

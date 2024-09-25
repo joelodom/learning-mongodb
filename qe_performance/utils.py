@@ -13,6 +13,7 @@ This utilities module is kind of a mess...
 
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
+import csv
 
 
 print("Setting up the AutoEncryptionOpts helper class...")

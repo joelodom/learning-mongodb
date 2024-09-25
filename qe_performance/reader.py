@@ -1,3 +1,4 @@
+import random
 import time
 from utils import create_client, DB_NAME, ENCRYPTED_COLLECTION
 from pprint import pprint
@@ -17,15 +18,15 @@ for i in range(ITERATIONS):
     # SWITCH TO AN ENCRYPTED QUERY!
     #
 
-    super_secret_search_string = f"{i}"
+    super_secret_search_string = f"{random.randint(1, 100)}"
 
     start_time = time.time()
     results = mongo_client[DB_NAME].get_collection(ENCRYPTED_COLLECTION).find({
-        "secret_string": super_secret_search_string
+        "encrypted_string": super_secret_search_string
     })
     count = 0
     for result in results:
-        pprint(result)
+        #pprint(result)
         count += 1
     end_time = time.time()
 
