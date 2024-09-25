@@ -18,8 +18,6 @@ from utils import create_client, DB_NAME, KMS_PROVIDER_CREDENTIALS, KEY_VAULT_NA
 
 print("Welcome to the QE performance experiment writer.")
 
-PERF_FILE = "writer_output.csv"
-
 mongo_client = create_client()
 
 #
@@ -73,7 +71,7 @@ assert(does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
 #
 
 ITEMS_TO_CREATE = 200
-ITERATIONS = 100000
+ITERATIONS = 10**9
 
 for x in range(ITERATIONS):
     print(f"Creating {ITEMS_TO_CREATE} random items... Iteration {x + 1} of {ITERATIONS}...")
@@ -93,9 +91,12 @@ for x in range(ITERATIONS):
     mongo_client[DB_NAME].get_collection(ENCRYPTED_COLLECTION).insert_many(created_items_dicts)
     end_time = time.time()
 
-    elapsed = end_time - start_time
+    elapsed = 100*(end_time - start_time)
     print(f"Items created. Elapsed time is {elapsed} ms.")
-    write_line_to_csv(PERF_FILE, [x + 1, ITEMS_TO_CREATE, elapsed])  # save the perf data
+
+    PERF_FILE = "writer_output.csv"
+    # iteration number, items created, elapsed time (ms), ms per item
+    write_line_to_csv(PERF_FILE, [x + 1, ITEMS_TO_CREATE, elapsed, elapsed/ITEMS_TO_CREATE])  # save the perf data
 
 #
 # Clean up

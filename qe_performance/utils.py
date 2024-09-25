@@ -11,6 +11,7 @@ This utilities module is kind of a mess...
 # by them.
 #
 
+import os
 from pymongo import MongoClient
 from pymongo.encryption_options import AutoEncryptionOpts
 import csv
@@ -54,7 +55,7 @@ print("Creating the MongoClient using the connection string in the source code..
 
 URI = "mongodb://127.0.0.1:27017/"
 
-USE_ATLAS = False
+USE_ATLAS = True
 if USE_ATLAS:
     PASSWORD=os.getenv("JOEL_ATLAS_PWD")
     if PASSWORD is None:
