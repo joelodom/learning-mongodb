@@ -1,5 +1,6 @@
 # Joel's additions
 *.pid
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
