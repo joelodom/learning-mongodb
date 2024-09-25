@@ -1,6 +1,6 @@
 import socket
 import time
-from qe_performance_create_connection import create_client, DB_NAME, ENCRYPTED_COLLECTION
+from utils import create_client, DB_NAME, ENCRYPTED_COLLECTION
 from pprint import pprint
 
 mongo_client = create_client()

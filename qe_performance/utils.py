@@ -1,3 +1,8 @@
+"""
+This utilities module is kind of a mess...
+"""
+
+
 #
 # AutoEncryptionOpts is a helper class that we pass to the MongoClient. It
 # provides the KMS credentials and the namespace (database and collection)
@@ -66,3 +71,17 @@ def create_client():
 
 ENCRYPTED_COLLECTION = "encrypted_collection"
 
+
+
+def write_line_to_csv(filename, data):
+    """
+    Writes a single line of data to a CSV file.
+
+    Args:
+        filename (str): The name or path of the CSV file.
+        data (list): A list of values representing a single row in the CSV file.
+    """
+
+    with open(filename, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(data)

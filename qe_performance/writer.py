@@ -1,8 +1,6 @@
 """
 This is a toy program to experiment with MongoDB Queryable Encryption
-performance. I don't claim it to be super scientific. See the performance
-listener program, which is a monitor for this program to collect more
-real-world-like data.
+performance. I don't claim it to be super scientific.
 
 Author: Joel Odom
 
@@ -13,14 +11,15 @@ TODO:
   * Test against Atlas since this has no network latency between any parts of the system.
 """
 
-import socket
+import csv
 import time
 from bson import STANDARD, CodecOptions
 from pymongo.encryption import ClientEncryption
-from utils import create_client, DB_NAME, KMS_PROVIDER_CREDENTIALS, KEY_VAULT_NAMESPACE, KMS_PROVIDER_NAME, KEY_VAULT_DATABASE, ENCRYPTED_COLLECTION
+from qe_performance.utils import create_client, DB_NAME, KMS_PROVIDER_CREDENTIALS, KEY_VAULT_NAMESPACE, KMS_PROVIDER_NAME, KEY_VAULT_DATABASE, ENCRYPTED_COLLECTION, write_line_to_csv
 
-print("Welcome to the QE performance experiment.")
+print("Welcome to the QE performance experiment writer.")
 
+PERF_FILE = "writer_output.csv"
 
 mongo_client = create_client()
 
@@ -34,17 +33,6 @@ def does_collection_exist(db_name, collection_name):
     return collection_name in collection_names
 
 assert(not does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
-
-
-#
-# Interlude: a signaling system so another client can be the database reader
-#
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-def send_signal(signal_str, host="localhost", port=3141):
-    global sock
-    sock.sendto(signal_str.encode("utf-8"), (host, port))
-
 
 #
 # Create the encrypted collection and key vault
@@ -86,7 +74,7 @@ assert(does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
 #
 
 ITEMS_TO_CREATE = 200
-ITERATIONS = 10
+ITERATIONS = 100000
 
 for x in range(ITERATIONS):
     print(f"Creating {ITEMS_TO_CREATE} random items... Iteration {x + 1} of {ITERATIONS}...")
@@ -103,40 +91,12 @@ for x in range(ITERATIONS):
         created_items_dicts.append(item_to_create)
 
     start_time = time.time()
-    send_signal("start-insert")
     mongo_client[DB_NAME].get_collection(ENCRYPTED_COLLECTION).insert_many(created_items_dicts)
-    send_signal("end-insert")
     end_time = time.time()
 
-    print(f"Items created. Elapsed time is {end_time - start_time} ms.")
-
-#
-# RESULT: About 1.1 ms per iteration with no noticable increase in time as the
-# collection grows. HOWEVER, if I change the string to be unencrypted, we're
-# talking 0.005 ms... I wonder if there is client-side caching or threading
-# happening there.
-#
-
-
-#
-# Check the size of the collection on disk
-#
-
-
-
-
-
-
-
-
-#
-# Perform a query
-#
-
-
-
-
-
+    elapsed = end_time - start_time
+    print(f"Items created. Elapsed time is {elapsed} ms.")
+    write_line_to_csv(PERF_FILE, [x + 1, ITEMS_TO_CREATE, elapsed])  # save the perf data
 
 #
 # Clean up
@@ -148,4 +108,3 @@ mongo_client.drop_database(KEY_VAULT_DATABASE)
 assert(not does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
 
 mongo_client.close()
-sock.close()
