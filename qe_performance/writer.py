@@ -71,7 +71,9 @@ assert(does_collection_exist(DB_NAME, ENCRYPTED_COLLECTION))
 #
 
 ITEMS_TO_CREATE = 200
-ITERATIONS = 10**9
+ITERATIONS = 1000
+
+overall_start_time = time.time()
 
 for x in range(ITERATIONS):
     print(f"Creating {ITEMS_TO_CREATE} random items... Iteration {x + 1} of {ITERATIONS}...")
@@ -97,6 +99,10 @@ for x in range(ITERATIONS):
     PERF_FILE = "writer_output.csv"
     # iteration number, items created, elapsed time (ms), ms per item
     write_line_to_csv(PERF_FILE, [x + 1, ITEMS_TO_CREATE, elapsed, elapsed/ITEMS_TO_CREATE])  # save the perf data
+
+overall_time = 100*(time.time() - overall_start_time)
+
+print(f"It took {overall_time} ms, which is about {overall_time / ITEMS_TO_CREATE / ITERATIONS} ms / record.")
 
 #
 # Clean up
