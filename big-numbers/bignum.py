@@ -198,5 +198,80 @@ def main():
     print("Addition Result:")
     print(result_number_str)
 
+    test_addition()
+
+def test_addition():
+    """
+    Tests the addition function by performing two different addition operations
+    that should yield the same result and asserting that they are equal.
+    """
+    # Clear previous data
+    chunks_collection.delete_many({})
+    
+    # Generate two large numbers
+    num_digits = 10000  # Adjust the number of digits as needed
+    num1_str = '1' + '0' * (num_digits - 1)  # A number like 100...0
+    num2_str = '9' * num_digits              # A number like 999...9
+    
+    # Store numbers in MongoDB
+    store_number('number1', num1_str)
+    store_number('number2', num2_str)
+    
+    # Retrieve chunks
+    chunks1 = get_number_chunks('number1')
+    chunks2 = get_number_chunks('number2')
+    
+    # Ensure both numbers have the same number of chunks
+    max_chunks = max(len(chunks1), len(chunks2))
+    if len(chunks1) < max_chunks:
+        # Pad with empty chunks
+        for i in range(len(chunks1), max_chunks):
+            chunks1.append({
+                'number_id': 'number1',
+                'chunk_index': i,
+                'data': [0],
+                'base': BASE,
+                'length': 1
+            })
+    if len(chunks2) < max_chunks:
+        for i in range(len(chunks2), max_chunks):
+            chunks2.append({
+                'number_id': 'number2',
+                'chunk_index': i,
+                'data': [0],
+                'base': BASE,
+                'length': 1
+            })
+    
+    # Prepare arguments for parallel addition
+    args = list(zip(chunks1, chunks2))
+    
+    # Perform addition in parallel
+    with Pool() as pool:
+        result_chunks = pool.map(add_chunk, args)
+    
+    # Propagate carry over between chunks
+    result_chunks = sorted(result_chunks, key=lambda x: x['chunk_index'])
+    result_chunks = propagate_carry(result_chunks)
+    
+    # Store result in MongoDB
+    store_result_chunks('result_number', result_chunks)
+    
+    # Retrieve and assemble the result number from chunked addition
+    result_chunks_db = get_number_chunks('result_number')
+    result_number_str = assemble_number(result_chunks_db)
+    
+    # Perform direct addition using gmpy2
+    num1 = mpz(num1_str)
+    num2 = mpz(num2_str)
+    direct_result = num1 + num2
+    direct_result_str = direct_result.digits()
+    
+    # Assert that the results are equal
+    assert result_number_str == direct_result_str, "The addition results do not match!"
+    
+    print("Test passed: The chunked addition result matches the direct addition result.")
+
 if __name__ == '__main__':
     main()
+
