@@ -50,7 +50,7 @@ KMS_PROVIDER_CREDENTIALS = {
 }
 
 # ref https://www.mongodb.com/docs/manual/core/queryable-encryption/reference/shared-library/
-CRYPT_SHARED_LIB = "/Users/joel.odom/mongo_crypt_shared_v1-macos-arm64-enterprise-8.0.0-rc9/lib/mongo_crypt_v1.dylib"
+CRYPT_SHARED_LIB = "/Users/joel.odom/lib/mongo_crypt_v1.dylib"
 
 auto_encryption_options = AutoEncryptionOpts(
     KMS_PROVIDER_CREDENTIALS,
