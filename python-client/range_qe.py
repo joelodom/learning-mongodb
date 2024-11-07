@@ -102,12 +102,16 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "path": "secret_int",
             "bsonType": "int",
             "queries":
-            [ {
-                "queryType": "range",
-                "trimFactor": 6, # six will be the default
-                "min": SECRET_INT_MIN,
-                "max": SECRET_INT_MAX
-            } ]  # range queryable
+            [
+                {
+                    "queryType": "range",
+                    "min": SECRET_INT_MIN,
+                    "max": SECRET_INT_MAX
+                },
+                # {
+                #     "queryType": "equality",
+                # }
+            ]
         },
         {
             "path": "secret_long",
@@ -115,7 +119,6 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 6, # six will be the default
             } ]  # range queryable
         },
         {
@@ -124,7 +127,6 @@ ENCRYPTED_FIELDS_MAP = {  # these are the fields to encrypt automagically
             "queries":
             [ {
                 "queryType": "range",
-                "trimFactor": 6, # six will be the default
                 "min": Decimal128(str(SECRET_DECIMAL_MIN)),
                 "max": Decimal128(str(SECRET_DECIMAL_MAX)),
                 "precision": 10
