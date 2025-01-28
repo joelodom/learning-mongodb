@@ -35,15 +35,15 @@ import com.mongodb.tutorials.qe.util.QueryableEncryptionHelpers;
 public class QueryableEncryptionTutorial {
     public static void main(String[] args) throws Exception {
         // start-setup-application-variables
-        String kmsProviderName = "<KMS provider name>";
+        String kmsProviderName = "local";
 
-        String uri = QueryableEncryptionHelpers.getEnv("MONGODB_URI"); // Your connection URI
+        String uri = QueryableEncryptionHelpers.getEnv("mongodb://127.0.0.1:27017/"); // Your connection URI
 
-        String keyVaultDatabaseName = "encryption";
-        String keyVaultCollectionName = "__keyVault";
+        String keyVaultDatabaseName = "encryptionJava";
+        String keyVaultCollectionName = "__keyVaultJava";
         String keyVaultNamespace = keyVaultDatabaseName + "." + keyVaultCollectionName;
-        String encryptedDatabaseName = "medicalRecords";
-        String encryptedCollectionName = "patients";
+        String encryptedDatabaseName = "medicalRecordsJava";
+        String encryptedCollectionName = "patientsJava";
         // end-setup-application-variables
 
         // start-setup-application-pojo
@@ -54,7 +54,7 @@ public class QueryableEncryptionTutorial {
         Map<String, Map<String, Object>> kmsProviderCredentials = QueryableEncryptionHelpers.getKmsProviderCredentials(kmsProviderName);
         BsonDocument customerMasterKeyCredentials = QueryableEncryptionHelpers.getCustomerMasterKeyCredentials(kmsProviderName);
 
-        AutoEncryptionSettings autoEncryptionSettings = QueryableEncryptionHelpers.getAutoEncryptionOptions(keyVaultNamespace, kmsProviderCredentials);
+       AutoEncryptionSettings autoEncryptionSettings = QueryableEncryptionHelpers.getAutoEncryptionOptions(keyVaultNamespace, kmsProviderCredentials);
         // start-create-client
         MongoClientSettings clientSettings = MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(uri))
