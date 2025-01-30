@@ -37,7 +37,7 @@ public class QueryableEncryptionTutorial {
         // start-setup-application-variables
         String kmsProviderName = "local";
 
-        String uri = QueryableEncryptionHelpers.getEnv("mongodb://127.0.0.1:27017/"); // Your connection URI
+        String uri = "mongodb://127.0.0.1:27017/";
 
         String keyVaultDatabaseName = "encryptionJava";
         String keyVaultCollectionName = "__keyVaultJava";
